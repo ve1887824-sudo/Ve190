@@ -3,122 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame Pro</title>
+    <title>GRAM Casino</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
         :root {
-            --bg-color: radial-gradient(circle, #1e1b4b, #0f172a);
-            --text-color: #ffffff;
-            --panel-bg: rgba(255, 255, 255, 0.05);
-            --accent-color: #3b82f6;
+            --bg-main: #0B0E14;
+            --bg-card: #151A25;
+            --bg-card-hover: #1C2230;
+            --text-main: #FFFFFF;
+            --text-muted: #8B94A6;
+            --accent-blue: #00D1FF;
+            --accent-purple: #9D50FF;
+            --accent-green: #00E676;
+            --accent-red: #FF5252;
         }
-        .theme-light {
-            --bg-color: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-            --text-color: #1f2937;
-            --panel-bg: rgba(0, 0, 0, 0.05);
-            --accent-color: #2563eb;
-        }
-        .theme-cosmic {
-            --bg-color: radial-gradient(circle, #581c87, #111827);
-            --text-color: #fae8ff;
-            --panel-bg: rgba(232, 121, 249, 0.1);
-            --accent-color: #a855f7;
-        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-color);
-            color: var(--text-color);
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh; user-select: none; -webkit-user-select: none;
-            box-sizing: border-box;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none;
         }
-        .screen {
-            display: none; width: 100%; max-width: 360px;
-            flex-direction: column; align-items: center;
-            justify-content: space-between; height: calc(100vh - 70px);
-            padding: 20px; box-sizing: border-box;
-        }
+
+        /* Экраны */
+        .screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding-bottom: 80px; }
         .screen.active { display: flex; }
-        .score-container { font-size: 52px; font-weight: bold; color: #f1c40f; margin-top: 20px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
-        .clicker-box { position: relative; margin: auto 0; }
-        .click-btn { font-size: 130px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; -webkit-tap-highlight-color: transparent; }
-        .click-btn:active { transform: scale(0.85); }
-        .panel { background: var(--panel-bg); padding: 15px; border-radius: 16px; width: 100%; box-sizing: border-box; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
-        .btn-general {
-            background: linear-gradient(135deg, var(--accent-color), #1d4ed8); color: white;
-            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
-            width: 100%; font-weight: bold; cursor: pointer;
+
+        /* Шапка */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: rgba(21, 26, 37, 0.8);
+            backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10;
         }
-        .btn-general:disabled { background: #475569; opacity: 0.4; cursor: not-allowed; }
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444, #b91c1c); color: white;
-            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
-            width: 100%; font-weight: bold; cursor: pointer; margin-top: 15px;
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #00D1FF, #0055FF); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 16px;}
+        .balance-pill {
+            display: flex; align-items: center; gap: 8px; background: var(--bg-card);
+            padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(0, 209, 255, 0.3);
+            font-weight: 600; font-size: 14px; color: var(--accent-blue);
         }
-        .theme-selector { display: flex; gap: 10px; width: 100%; margin-top: 15px; }
-        .btn-theme {
-            flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
-            background: var(--panel-bg); color: var(--text-color); cursor: pointer; font-weight: 500;
+
+        /* Главная (Кликер) */
+        .clicker-area { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin-top: 20px;}
+        .huge-balance { font-size: 56px; font-weight: 700; color: var(--accent-blue); text-shadow: 0 0 20px rgba(0, 209, 255, 0.4); margin-bottom: 10px;}
+        .click-btn {
+            font-size: 150px; background: none; border: none; cursor: pointer;
+            transition: transform 0.05s; outline: none;
+            filter: drop-shadow(0 0 30px rgba(0, 209, 255, 0.3));
         }
+        .click-btn:active { transform: scale(0.9); }
+        .upgrade-btn {
+            margin: 20px; padding: 16px; background: var(--bg-card); border: 1px solid var(--accent-purple);
+            border-radius: 16px; color: white; font-weight: 600; font-size: 16px; cursor: pointer;
+            display: flex; justify-content: center; gap: 10px;
+        }
+        .upgrade-btn:disabled { opacity: 0.5; border-color: var(--text-muted); }
+
+        /* Профиль */
+        .profile-header { display: flex; align-items: center; gap: 10px; padding: 20px; font-size: 20px; font-weight: 600; }
+        .back-btn { background: var(--bg-card); border: none; color: white; width: 36px; height: 36px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+        
+        .user-card {
+            background: var(--bg-card); border-radius: 24px; margin: 0 20px; padding: 20px;
+            display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-blue); }
+        .user-info h3 { font-size: 18px; margin-bottom: 4px; }
+        .user-info p { font-size: 13px; color: var(--text-muted); }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+            margin: 20px; 
+        }
+        .stat-box {
+            background: var(--bg-card); border-radius: 16px; padding: 15px 10px;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .stat-value { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
+        .c-blue { color: var(--accent-blue); } .c-green { color: var(--accent-green); } .c-red { color: var(--accent-red); } .c-yellow { color: #FFD700; } .c-purple { color: var(--accent-purple); }
+
+        .details-list { margin: 0 20px; background: var(--bg-card); border-radius: 24px; padding: 20px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-row span:first-child { color: var(--text-muted); }
+        .detail-row span:last-child { font-weight: 500; }
+
+        .badges { display: flex; gap: 8px; }
+        .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+        .badge-active { background: rgba(0, 230, 118, 0.2); color: var(--accent-green); }
+        .badge-admin { background: rgba(0, 209, 255, 0.2); color: var(--accent-blue); }
+
+        .action-buttons { display: flex; gap: 10px; margin: 20px; }
+        .action-btn {
+            flex: 1; padding: 16px; border-radius: 16px; background: var(--bg-card); border: none;
+            color: white; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .admin-panel-btn {
+            margin: 0 20px; padding: 16px; background: linear-gradient(135deg, #9D50FF, #6B2BFF);
+            border-radius: 16px; border: none; color: white; font-weight: 600; font-size: 16px;
+            cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px;
+            box-shadow: 0 4px 20px rgba(157, 80, 255, 0.3);
+        }
+        .logout-btn {
+            margin: 15px 20px; padding: 16px; background: transparent; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; color: var(--text-muted); font-weight: 600; font-size: 16px; cursor: pointer;
+        }
+
+        /* Навигация */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
-            height: 65px; background: var(--panel-bg);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            display: flex; justify-content: space-around; align-items: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.08); z-index: 100;
+            height: 70px; background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-around; align-items: center; z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         .nav-item {
             display: flex; flex-direction: column; align-items: center;
-            background: none; border: none; color: #94a3b8; cursor: pointer;
-            font-size: 12px; font-weight: 500;
+            background: none; border: none; color: var(--text-muted); cursor: pointer;
+            font-size: 10px; font-weight: 500; gap: 4px;
         }
-        .nav-item.active { color: #f1c40f; }
-        .nav-icon { font-size: 24px; margin-bottom: 2px; }
+        .nav-item.active { color: var(--accent-blue); }
+        .nav-icon { font-size: 22px; }
+
+        /* Скрытие элементов */
+        .hidden { display: none !important; }
     </style>
 </head>
-<body id="app-body">
+<body>
 
+    <!-- ================= ГЛАВНЫЙ ЭКРАН ================= -->
     <div class="screen active" id="screen-main">
-        <div>
-            <h2>KisaGame</h2>
-            <div class="score-container" id="score">...</div>
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">💎</div> GRAM CASINO
+            </div>
+            <div class="balance-pill">💎 <span id="balance-header">0</span> GRAM</div>
         </div>
-        <div class="clicker-box">
+
+        <div class="clicker-area">
+            <div class="huge-balance"><span id="balance-main">0</span></div>
+            <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 30px;">GRAM</div>
+            
             <button class="click-btn" id="coin-btn">🐱</button>
-        </div>
-        <div class="panel">
-            <button class="btn-general" id="upgrade-click" disabled>⚔️ Сила клика</button>
+
+            <button class="upgrade-btn" id="upgrade-btn" disabled>
+                <span>⚡ Улучшить клик</span>
+                <span id="upgrade-cost">15 💎</span>
+            </button>
         </div>
     </div>
 
-    <div class="screen" id="screen-settings">
-        <div style="width: 100%;">
-            <h2>Настройки</h2>
-            <div class="panel">
-                <div style="text-align: left; font-size: 14px; margin-bottom: 5px; opacity: 0.8;">Тема оформления:</div>
-                <div class="theme-selector">
-                    <button class="btn-theme" onclick="changeTheme('dark')">🌌 Тёмная</button>
-                    <button class="btn-theme" onclick="changeTheme('light')">☀️ Светлая</button>
-                    <button class="btn-theme" onclick="changeTheme('cosmic')">🔮 Космос</button>
+    <!-- ================= ЭКРАН ПРОФИЛЯ ================= -->
+    <div class="screen" id="screen-profile">
+        <div class="profile-header">
+            <button class="back-btn" onclick="switchScreen('screen-main')">‹</button>
+            <span>Профиль</span>
+        </div>
+
+        <div class="user-card">
+            <img src="" id="user-avatar" class="avatar" alt="Avatar">
+            <div class="user-info">
+                <h3 id="user-name">Игрок</h3>
+                <p>@<span id="user-username">username</span> • ID: <span id="user-id">0</span></p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value c-blue" id="stat-balance">0</div>
+                <div class="stat-label">GRAM</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-games">0</div>
+                <div class="stat-label">Игр</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value c-green" id="stat-wins">0</div>
+                <div class="stat-label">Побед</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value c-red" id="stat-losses">0</div>
+                <div class="stat-label">Поражений</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-bonus">0</div>
+                <div class="stat-label">Бонусов</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value c-yellow">#9</div>
+                <div class="stat-label">Рейтинг</div>
+            </div>
+        </div>
+
+        <div class="details-list">
+            <div class="detail-row">
+                <span>Баланс</span>
+                <span class="c-blue" id="detail-balance">0 GRAM</span>
+            </div>
+            <div class="detail-row">
+                <span>Telegram ID</span>
+                <span id="detail-id">0</span>
+            </div>
+            <div class="detail-row">
+                <span>Дата регистрации</span>
+                <span id="detail-date">7 ноября 2026 г.</span>
+            </div>
+            <div class="detail-row">
+                <span>Статус</span>
+                <div class="badges">
+                    <span class="badge badge-active">АКТИВЕН</span>
+                    <!-- Бейдж Админа показываем только если ID совпадает -->
+                    <span class="badge badge-admin hidden" id="admin-badge">АДМИН</span>
                 </div>
             </div>
-            <div class="panel" style="margin-top: 20px;">
-                <div style="text-align: left; font-size: 14px; opacity: 0.8;">Опасная зона:</div>
-                <button class="btn-danger" id="reset-btn">🔄 Сбросить весь прогресс</button>
-            </div>
         </div>
+
+        <div class="action-buttons">
+            <button class="action-btn">💸 Перевод</button>
+            <button class="action-btn">🏆 Рейтинг</button>
+        </div>
+
+        <!-- Кнопка админки (скрыта по умолчанию) -->
+        <button class="admin-panel-btn hidden" id="admin-btn">🛡️ Админ-панель</button>
+        <button class="logout-btn" onclick="switchScreen('screen-main')">Выйти</button>
     </div>
 
+    <!-- ================= НАВИГАЦИЯ ================= -->
     <nav class="bottom-nav">
-        <button class="nav-item active" id="nav-main"><span class="nav-icon">🎮</span><span>Главная</span></button>
-        <button class="nav-item" id="nav-settings"><span class="nav-icon">⚙️</span><span>Настройки</span></button>
+        <button class="nav-item active" id="nav-main" onclick="switchScreen('screen-main')">
+            <span class="nav-icon">🏠</span>
+            <span>Главная</span>
+        </button>
+        <button class="nav-item" onclick="alert('В разработке')">
+            <span class="nav-icon">🎮</span>
+            <span>Игры</span>
+        </button>
+        <button class="nav-item" onclick="alert('В разработке')">
+            <span class="nav-icon">🎁</span>
+            <span>Бонус</span>
+        </button>
+        <button class="nav-item" id="nav-profile" onclick="switchScreen('screen-profile')">
+            <span class="nav-icon">👤</span>
+            <span>Профиль</span>
+        </button>
+        <button class="nav-item" onclick="alert('В разработке')">
+            <span class="nav-icon">🏆</span>
+            <span>Рейтинг</span>
+        </button>
     </nav>
 
     <script>
-        // ВАШ АДРЕС RENDER
         const API_URL = 'https://ve190-9.onrender.com'; 
-        
+        // ВАШ TELEGRAM ID (чтобы показать кнопку Админа). Узнать можно у бота @userinfobot
+        const ADMIN_ID = "5372048108"; 
+
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
@@ -127,29 +272,32 @@
         let costClick = 15;
         let pendingCoins = 0;
         let pendingUpgrade = false;
-        let currentTheme = localStorage.getItem('kisa_theme') || 'dark';
         let syncTimer = null;
+        let userData = null;
 
-        const scoreEl = document.getElementById('score');
-        const btnClick = document.getElementById('upgrade-click');
-        const bodyEl = document.getElementById('app-body');
-
-        function changeTheme(name) {
-            currentTheme = name;
-            localStorage.setItem('kisa_theme', name);
-            bodyEl.className = '';
-            if (name === 'light') bodyEl.classList.add('theme-light');
-            if (name === 'cosmic') bodyEl.classList.add('theme-cosmic');
+        // Переключение экранов
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            // Подсветка вкладок
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (screenId === 'screen-main') document.getElementById('nav-main').classList.add('active');
+            if (screenId === 'screen-profile') document.getElementById('nav-profile').classList.add('active');
         }
-        changeTheme(currentTheme);
 
         function updateUI() {
-            scoreEl.innerText = coins + ' 🐾';
-            btnClick.innerText = `⚔️ Сила клика (+1) — ${costClick} 🐾`;
-            btnClick.disabled = coins < costClick;
+            // Обновляем цифры везде
+            document.getElementById('balance-header').innerText = coins;
+            document.getElementById('balance-main').innerText = coins;
+            document.getElementById('stat-balance').innerText = coins;
+            document.getElementById('detail-balance').innerText = coins + ' GRAM';
+            
+            const btn = document.getElementById('upgrade-btn');
+            document.getElementById('upgrade-cost').innerText = costClick + ' 💎';
+            btn.disabled = coins < costClick;
         }
 
-        // Безопасный запрос (чтобы не вешало игру, если Render спит)
         async function fetchWithTimeout(url, options, timeout = 5000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
@@ -164,40 +312,46 @@
         }
 
         async function loadProgress() {
-            if (!tg?.initData) {
-                coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
-                clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
-                costClick = 15 * clickPower;
-                updateUI();
-                return;
-            }
+            if (!tg?.initData) return;
 
             try {
                 const r = await fetchWithTimeout(`${API_URL}/api/load`, {
-                    method:'POST', 
-                    headers:{'Content-Type':'application/json'},
+                    method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ initData: tg.initData })
-                }, 4000);
+                }, 5000);
                 
-                const d = await r.json();
-                coins = d.coins ?? 0;
-                clickPower = d.clickPower ?? 1;
+                userData = await r.json();
+                coins = userData.coins ?? 0;
+                clickPower = userData.clickPower ?? 1;
                 costClick = 15 * clickPower;
+
+                // Заполняем профиль
+                document.getElementById('user-name').innerText = userData.username || "Игрок";
+                document.getElementById('user-username').innerText = userData.username || "username";
+                document.getElementById('user-id').innerText = userData.user_id;
+                document.getElementById('detail-id').innerText = userData.user_id;
+                
+                if (userData.photo_url) {
+                    document.getElementById('user-avatar').src = userData.photo_url;
+                } else {
+                    // Заглушка, если нет аватарки
+                    document.getElementById('user-avatar').src = "https://ui-avatars.com/api/?name=" + (userData.username || "U") + "&background=00D1FF&color=fff";
+                }
+
+                // Проверка на админа
+                if (String(userData.user_id) === String(ADMIN_ID)) {
+                    document.getElementById('admin-badge').classList.remove('hidden');
+                    document.getElementById('admin-btn').classList.remove('hidden');
+                }
+
             } catch(e) { 
-                console.warn('Сервер спит, играем локально', e);
-                coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
-                clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
-                costClick = 15 * clickPower;
+                console.warn('Сервер спит', e);
             }
             updateUI();
         }
 
         async function sync() {
-            if (!tg?.initData) {
-                localStorage.setItem('kisa_coins', coins);
-                localStorage.setItem('kisa_power', clickPower);
-                return;
-            }
+            if (!tg?.initData) return;
             if (pendingCoins === 0 && !pendingUpgrade) return;
 
             const add = pendingCoins;
@@ -206,26 +360,22 @@
             pendingUpgrade = false;
 
             try {
-                // Отправляем данные на сервер. НЕ ЖДЕМ ответа для обновления экрана.
                 await fetchWithTimeout(`${API_URL}/api/sync`, {
-                    method:'POST', 
-                    headers:{'Content-Type':'application/json'},
+                    method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
                 }, 5000);
             } catch(e) {
-                // Если интернет пропал, возвращаем клики обратно в очередь
                 pendingCoins += add;
                 pendingUpgrade = pendingUpgrade || upg;
-                console.warn('sync failed, saved in queue', e);
             }
         }
 
         function scheduleSync() {
             clearTimeout(syncTimer);
-            syncTimer = setTimeout(sync, 1000); // Отправляем пачку кликов раз в секунду
+            syncTimer = setTimeout(sync, 1000);
         }
 
-        // === КЛИК ===
+        // Клик
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             pendingCoins += clickPower;
@@ -234,8 +384,8 @@
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
-        // === УЛУЧШЕНИЕ ===
-        btnClick.addEventListener('click', () => {
+        // Апгрейд
+        document.getElementById('upgrade-btn').addEventListener('click', () => {
             if (coins >= costClick) {
                 coins -= costClick;
                 clickPower += 1;
@@ -248,54 +398,15 @@
             }
         });
 
-        // === СБРОС ===
-        document.getElementById('reset-btn').addEventListener('click', async () => {
-            if (!confirm('Сбросить весь прогресс?')) return;
-            coins = 0; clickPower = 1; costClick = 15;
-            updateUI();
-            if (tg?.initData) {
-                try {
-                    await fetchWithTimeout(`${API_URL}/api/sync`, {
-                        method:'POST', headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({ initData: tg.initData, addCoins: -99999999, upgradePower: false })
-                    });
-                } catch(e) {}
-            }
-            pendingCoins = 0; pendingUpgrade = false;
-            document.getElementById('nav-main').click();
-        });
-
-        // === ВКЛАДКИ ===
-        document.getElementById('nav-main').addEventListener('click', () => {
-            document.getElementById('nav-main').classList.add('active');
-            document.getElementById('nav-settings').classList.remove('active');
-            document.getElementById('screen-main').classList.add('active');
-            document.getElementById('screen-settings').classList.remove('active');
-        });
-        document.getElementById('nav-settings').addEventListener('click', () => {
-            document.getElementById('nav-settings').classList.add('active');
-            document.getElementById('nav-main').classList.remove('active');
-            document.getElementById('screen-settings').classList.add('active');
-            document.getElementById('screen-main').classList.remove('active');
-        });
-
-        // === УМНАЯ ФОНОВАЯ ПРОВЕРКА (раз в 10 сек) ===
+        // Фоновое обновление (защита от откатов)
         setInterval(async () => {
-            if (!tg?.initData) return;
-            
-            // Если есть неотправленные клики — не мешаем
-            if (pendingCoins !== 0 || pendingUpgrade) return;
-
+            if (!tg?.initData || pendingCoins !== 0 || pendingUpgrade) return;
             try {
                 const r = await fetchWithTimeout(`${API_URL}/api/load`, {
                     method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ initData: tg.initData })
                 }, 5000);
                 const d = await r.json();
-                
-                // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: 
-                // Обновляем экран ТОЛЬКО если на сервере монет БОЛЬШЕ, чем у нас.
-                // (Это защищает от откатов, если сервер тормозит).
                 if (d.coins !== undefined && d.coins > coins) {
                     coins = d.coins;
                     clickPower = d.clickPower;
