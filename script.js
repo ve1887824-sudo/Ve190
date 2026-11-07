@@ -20,6 +20,7 @@ window.switchScreen = function(screenId) {
     if (screenId === 'screen-bonus') { document.getElementById('nav-bonus').classList.add('active'); checkBonusStatus(); }
     if (screenId === 'screen-profile') document.getElementById('nav-profile').classList.add('active');
     if (screenId === 'screen-leaderboard') { document.getElementById('nav-leader').classList.add('active'); loadLeaderboard(); }
+    if (screenId === 'screen-settings') document.getElementById('nav-settings').classList.add('active');
 }
 
 function updateUI() {
@@ -56,9 +57,7 @@ setInterval(() => {
         clickEl.classList.remove('hidden');
         const diff = Math.floor((buffClickEndTime - Date.now()) / 1000);
         clickTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
-    } else {
-        clickEl.classList.add('hidden');
-    }
+    } else { clickEl.classList.add('hidden'); }
 
     const autoEl = document.getElementById('buff-auto-timer');
     const autoTimeEl = document.getElementById('buff-auto-time');
@@ -66,9 +65,7 @@ setInterval(() => {
         autoEl.classList.remove('hidden');
         const diff = Math.floor((buffAutoEndTime - Date.now()) / 1000);
         autoTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
-    } else {
-        autoEl.classList.add('hidden');
-    }
+    } else { autoEl.classList.add('hidden'); }
 }, 1000);
 
 async function fetchWithTimeout(url, options, timeout = 5000) {
@@ -79,15 +76,19 @@ async function fetchWithTimeout(url, options, timeout = 5000) {
 }
 
 async function loadProgress() {
+    clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
+    autoClickPower = parseInt(localStorage.getItem('kisa_auto')) || 0;
+
     if (!tg?.initData) return;
     try {
         const r = await fetchWithTimeout(`${API_URL}/api/load`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
         userData = await r.json();
-        
-        // Принудительно делаем числами, чтобы избежать null
         coins = parseInt(userData.coins) || 0; 
-        clickPower = parseInt(userData.clickPower) || 1; 
-        autoClickPower = parseInt(userData.autoClick) || 0; 
+        if (userData.clickPower) clickPower = parseInt(userData.clickPower);
+        if (userData.autoClick) autoClickPower = parseInt(userData.autoClick); 
+        
+        localStorage.setItem('kisa_power', clickPower);
+        localStorage.setItem('kisa_auto', autoClickPower);
         
         document.getElementById('user-name').innerText = userData.username || "Игрок";
         document.getElementById('user-username').innerText = userData.username || "username";
@@ -96,26 +97,26 @@ async function loadProgress() {
         document.getElementById('stat-games').innerText = userData.games_played || 0;
         document.getElementById('stat-wins').innerText = userData.wins || 0;
         document.getElementById('stat-losses').innerText = userData.losses || 0;
-    } catch(e) { console.warn('Ошибка загрузки', e); }
+    } catch(e) { console.warn('Сервер недоступен, используем локальные данные', e); }
     updateUI();
 }
 
 async function sync() {
     if (!tg?.initData) return;
+    localStorage.setItem('kisa_power', clickPower);
+    localStorage.setItem('kisa_auto', autoClickPower);
+
     if (pendingCoins === 0 && clickPower === userData.clickPower && autoClickPower === userData.autoClick) return;
     
     const add = pendingCoins;
-    const currentPower = clickPower;
-    const currentAuto = autoClickPower;
-    
     pendingCoins = 0; 
-    userData.clickPower = currentPower; 
-    userData.autoClick = currentAuto;
+    userData.clickPower = clickPower; 
+    userData.autoClick = autoClickPower;
     
     try {
         await fetchWithTimeout(`${API_URL}/api/sync`, { 
             method:'POST', headers:{'Content-Type':'application/json'}, 
-            body: JSON.stringify({ initData: tg.initData, addCoins: add, clickPower: currentPower, autoClick: currentAuto }) 
+            body: JSON.stringify({ initData: tg.initData, addCoins: add, clickPower: clickPower, autoClick: autoClickPower }) 
         });
     } catch(e) { pendingCoins += add; }
 }
@@ -156,12 +157,10 @@ window.buyBuff = function(type) {
         coins -= 500; pendingCoins -= 500;
         buffClickEndTime = Math.max(Date.now(), buffClickEndTime) + 300000;
         updateUI(); scheduleSync();
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (type === 'auto' && coins >= 1000) {
         coins -= 1000; pendingCoins -= 1000;
         buffAutoEndTime = Math.max(Date.now(), buffAutoEndTime) + 300000;
         updateUI(); scheduleSync();
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     }
 }
 
@@ -293,6 +292,40 @@ async function loadLeaderboard() {
         const data = await r.json();
         container.innerHTML = data.map((p, i) => `<div class="leader-row"><div class="leader-left"><span>${i+1}</span><img class="leader-avatar" src="${p.photo_url || 'https://ui-avatars.com/api/?name=U&background=00D1FF&color=fff'}"><span>${p.username || 'Игрок'}</span></div><span class="leader-coins">${p.coins} 🐾</span></div>`).join('');
     } catch(e) { container.innerHTML = 'Ошибка'; }
+}
+
+// === НАСТРОЙКИ ===
+
+window.changeTheme = function(theme) {
+    localStorage.setItem('kisa_theme', theme);
+    document.body.classList.remove('theme-light', 'theme-cosmic');
+    if (theme === 'light') document.body.classList.add('theme-light');
+    if (theme === 'cosmic') document.body.classList.add('theme-cosmic');
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+window.resetProgress = async function() {
+    if (!confirm('Вы уверены, что хотите полностью сбросить весь прогресс? Это действие необратимо.')) return;
+    
+    // 1. Очищаем локальные данные
+    localStorage.removeItem('kisa_power');
+    localStorage.removeItem('kisa_auto');
+    
+    // 2. Отправляем запрос на сервер для обнуления данных
+    try {
+        await fetchWithTimeout(`${API_URL}/api/sync`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ initData: tg.initData, addCoins: -999999999, clickPower: 1, autoClick: 0 })
+        });
+    } catch(e) { console.warn('Не удалось синхронизировать сброс с сервером'); }
+    
+    // 3. Обновляем интерфейс
+    coins = 0; clickPower = 1; autoClickPower = 0;
+    userData = { clickPower: 1, autoClick: 0 };
+    updateUI();
+    
+    alert('🔄 Прогресс полностью сброшен!');
+    switchScreen('screen-main');
 }
 
 loadProgress();
