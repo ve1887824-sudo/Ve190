@@ -11,24 +11,20 @@
 
     <div class="screen active" id="screen-main">
         <div class="header">
-            <div class="logo"><div class="logo-icon">🐱</div> KisaGame</div>
+            <div class="logo"><div class="logo-icon">💎</div> GRAM</div>
             <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
         </div>
         <div class="clicker-area">
-            <!-- Таймер буста -->
             <div id="buff-timer" class="buff-timer hidden">🔥 x2: <span id="buff-time">0:00</span></div>
-            
             <div class="huge-balance"><span id="balance-main">0</span></div>
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
-            
-            <button class="upgrade-btn" onclick="openShop()" style="justify-content: center; border-color: var(--accent-blue); box-shadow: 0 4px 15px rgba(0, 209, 255, 0.2);">
-                <span>🛒 Магазин улучшений</span>
+            <button class="upgrade-btn" onclick="openShop()" style="justify-content: center; border-color: var(--accent-blue);">
+                <span>🛒 Магазин</span>
             </button>
         </div>
     </div>
 
-    <!-- ОСТАЛЬНОЙ HTML БЕЗ ИЗМЕНЕНИЙ, ОН У ВАС ЕСТЬ -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
         <div class="game-grid">
@@ -41,16 +37,39 @@
         </div>
     </div>
 
+    <!-- НОВЫЙ ЭКРАН ИГРЫ -->
     <div class="screen" id="screen-game-play">
-        <div class="header" style="justify-content: flex-start; gap: 15px;">
+        <div class="header" style="justify-content: flex-start; gap: 15px; background: transparent;">
             <button class="back-btn" onclick="switchScreen('screen-games')">‹</button>
             <div class="logo" id="game-header-title">Игра</div>
         </div>
+        
         <div class="game-play-area">
+            <!-- Сама игра (барабаны, кости и т.д.) -->
             <div id="game-ui" class="game-ui-container"></div>
-            <div class="game-controls">
+
+            <!-- Панель выигрыша (скрыта по умолчанию) -->
+            <div id="win-panel" class="win-panel hidden">
+                <div class="win-text">🎉 Победа! <span id="win-multiplier"></span></div>
+                <div class="win-amount">+<span id="win-amount">0</span></div>
+            </div>
+
+            <!-- Прогресс-бар (для визуала) -->
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+            <!-- Панель ставок -->
+            <div class="bet-panel">
+                <div class="bet-label">ВАША СТАВКА</div>
                 <input type="number" id="bet-input" class="bet-input" value="10" min="1">
-                <button class="btn-primary" id="play-btn" onclick="executeGame()">Играть</button>
+                
+                <div class="quick-bets">
+                    <button class="quick-bet" onclick="setBet(100)">100</button>
+                    <button class="quick-bet" onclick="setBet(1000)">1 000</button>
+                    <button class="quick-bet" onclick="setBet(5000)">5 000</button>
+                    <button class="quick-bet" onclick="setBet(coins)">Весь баланс</button>
+                </div>
+
+                <button class="btn-play" id="play-btn" onclick="executeGame()">Крутить</button>
             </div>
         </div>
     </div>
@@ -62,18 +81,18 @@
             <div class="shop-section">
                 <h3>Постоянные улучшения</h3>
                 <div class="shop-item">
-                    <div><div class="shop-title">⚡ Сила клика</div><div class="shop-desc">Увеличивает доход за 1 клик</div></div>
+                    <div><div class="shop-title">⚡ Сила клика</div></div>
                     <button class="btn-shop" id="btn-up-power" onclick="buyUpgrade('power')">Купить</button>
                 </div>
                 <div class="shop-item">
-                    <div><div class="shop-title">🤖 Автоклик</div><div class="shop-desc">Пассивный доход в секунду</div></div>
+                    <div><div class="shop-title">🤖 Автоклик</div></div>
                     <button class="btn-shop" id="btn-up-auto" onclick="buyUpgrade('auto')">Купить</button>
                 </div>
             </div>
             <div class="shop-section">
                 <h3>Временные бусты</h3>
                 <div class="shop-item">
-                    <div><div class="shop-title">🔥 x2 К клику</div><div class="shop-desc">Удваивает силу клика на 5 минут</div></div>
+                    <div><div class="shop-title">🔥 x2 К клику</div></div>
                     <button class="btn-shop" id="btn-buff" onclick="buyBuff()">Купить</button>
                 </div>
             </div>
@@ -92,7 +111,7 @@
     </div>
 
     <div class="screen" id="screen-profile">
-        <div class="profile-header"><span>Профиль</span></div>
+        <div class="header"><div class="logo">👤 Профиль</div></div>
         <div class="user-card">
             <img src="" id="user-avatar" class="avatar" alt="Avatar">
             <div class="user-info">
@@ -105,24 +124,11 @@
             <div class="stat-box"><div class="stat-value" id="stat-games">0</div><div class="stat-label">Игр</div></div>
             <div class="stat-box"><div class="stat-value c-green" id="stat-wins">0</div><div class="stat-label">Побед</div></div>
             <div class="stat-box"><div class="stat-value c-red" id="stat-losses">0</div><div class="stat-label">Поражений</div></div>
-            <div class="stat-box"><div class="stat-value" id="stat-bonus">0</div><div class="stat-label">Бонусов</div></div>
-            <div class="stat-box"><div class="stat-value c-yellow">#9</div><div class="stat-label">Рейтинг</div></div>
-        </div>
-        <div class="details-list">
-            <div class="detail-row"><span>Баланс</span><span class="c-blue" id="detail-balance">0 Kisa</span></div>
-            <div class="detail-row"><span>Telegram ID</span><span id="detail-id">0</span></div>
-            <div class="detail-row"><span>Дата регистрации</span><span id="detail-date">Сегодня</span></div>
-            <div class="detail-row"><span>Статус</span>
-                <div class="badges">
-                    <span class="badge badge-active">АКТИВЕН</span>
-                    <span class="badge badge-admin hidden" id="admin-badge">АДМИН</span>
-                </div>
-            </div>
         </div>
     </div>
 
     <div class="screen" id="screen-leaderboard">
-        <div class="header"><div class="logo">🏆 Топ-10 игроков</div></div>
+        <div class="header"><div class="logo">🏆 Рейтинг</div></div>
         <div class="leaderboard-list" id="leaderboard-container"></div>
     </div>
 
