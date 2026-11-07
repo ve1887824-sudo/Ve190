@@ -3,230 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame</title>
+    <title>KisaGame Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
             --bg-color: radial-gradient(circle, #1e1b4b, #0f172a);
             --text-color: #ffffff;
-            --panel-bg: rgba(255,255,255,0.05);
+            --panel-bg: rgba(255, 255, 255, 0.05);
             --accent-color: #3b82f6;
         }
-        .theme-light { --bg-color: linear-gradient(135deg,#f3f4f6,#e5e7eb); --text-color:#1f2937; --panel-bg:rgba(0,0,0,0.05); --accent-color:#2563eb; }
-        .theme-cosmic { --bg-color: radial-gradient(circle,#581c87,#111827); --text-color:#fae8ff; --panel-bg:rgba(232,121,249,0.1); --accent-color:#a855f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg-color); color: var(--text-color); margin:0; display:flex; flex-direction:column; align-items:center; min-height:100vh; user-select:none; }
-        .screen { display:none; width:100%; max-width:360px; flex-direction:column; align-items:center; justify-content:space-between; height:calc(100vh - 70px); padding:20px; box-sizing:border-box; }
-        .screen.active { display:flex; }
-        .score-container { font-size:52px; font-weight:bold; color:#f1c40f; margin-top:20px; }
-        .click-btn { font-size:130px; background:none; border:none; cursor:pointer; transition:transform .05s; }
-        .click-btn:active { transform:scale(0.85); }
-        .panel { background:var(--panel-bg); padding:15px; border-radius:16px; width:100%; box-sizing:border-box; margin-bottom:20px; }
-        .btn-general { background:linear-gradient(135deg,var(--accent-color),#1d4ed8); color:#fff; border:none; padding:14px; font-size:15px; border-radius:12px; width:100%; font-weight:bold; cursor:pointer; }
-        .btn-general:disabled { background:#475569; opacity:0.4; }
-        .btn-danger { background:linear-gradient(135deg,#ef4444,#b91c1c); color:#fff; border:none; padding:14px; border-radius:12px; width:100%; font-weight:bold; margin-top:15px; }
-        .theme-selector { display:flex; gap:10px; margin-top:15px; }
-        .btn-theme { flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:var(--panel-bg); color:var(--text-color); }
-        .bottom-nav { position:fixed; bottom:0; left:0; right:0; height:65px; background:var(--panel-bg); backdrop-filter:blur(10px); display:flex; justify-content:space-around; align-items:center; border-top:1px solid rgba(255,255,255,.08); }
-        .nav-item { display:flex; flex-direction:column; align-items:center; background:none; border:none; color:#94a3b8; font-size:12px; }
-        .nav-item.active { color:#f1c40f; }
-        .nav-icon { font-size:24px; margin-bottom:2px; }
+        .theme-light {
+            --bg-color: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            --text-color: #1f2937;
+            --panel-bg: rgba(0, 0, 0, 0.05);
+            --accent-color: #2563eb;
+        }
+        .theme-cosmic {
+            --bg-color: radial-gradient(circle, #581c87, #111827);
+            --text-color: #fae8ff;
+            --panel-bg: rgba(232, 121, 249, 0.1);
+            --accent-color: #a855f7;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; user-select: none; -webkit-user-select: none;
+            box-sizing: border-box;
+        }
+        .screen {
+            display: none; width: 100%; max-width: 360px;
+            flex-direction: column; align-items: center;
+            justify-content: space-between; height: calc(100vh - 70px);
+            padding: 20px; box-sizing: border-box;
+        }
+        .screen.active { display: flex; }
+        .score-container { font-size: 52px; font-weight: bold; color: #f1c40f; margin-top: 20px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
+        .clicker-box { position: relative; margin: auto 0; }
+        .click-btn { font-size: 130px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; -webkit-tap-highlight-color: transparent; }
+        .click-btn:active { transform: scale(0.85); }
+        .panel { background: var(--panel-bg); padding: 15px; border-radius: 16px; width: 100%; box-sizing: border-box; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .btn-general {
+            background: linear-gradient(135deg, var(--accent-color), #1d4ed8); color: white;
+            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
+            width: 100%; font-weight: bold; cursor: pointer;
+        }
+        .btn-general:disabled { background: #475569; opacity: 0.4; cursor: not-allowed; }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #b91c1c); color: white;
+            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
+            width: 100%; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
+        .theme-selector { display: flex; gap: 10px; width: 100%; margin-top: 15px; }
+        .btn-theme {
+            flex: 1; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: var(--panel-bg); color: var(--text-color); cursor: pointer; font-weight: 500;
+        }
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            height: 65px; background: var(--panel-bg);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08); z-index: 100;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            background: none; border: none; color: #94a3b8; cursor: pointer;
+            font-size: 12px; font-weight: 500;
+        }
+        .nav-item.active { color: #f1c40f; }
+        .nav-icon { font-size: 24px; margin-bottom: 2px; }
     </style>
 </head>
 <body id="app-body">
 
-<div class="screen active" id="screen-main">
-    <div>
-        <h2>KisaGame</h2>
-        <div class="score-container" id="score">0 🐾</div>
-    </div>
-    <div><button class="click-btn" id="coin-btn">🐱</button></div>
-    <div class="panel">
-        <button class="btn-general" id="upgrade-click" disabled>⚔️ Сила клика — 15 🐾</button>
-    </div>
-</div>
-
-<div class="screen" id="screen-settings">
-    <div style="width:100%">
-        <h2>Настройки</h2>
+    <div class="screen active" id="screen-main">
+        <div>
+            <h2>KisaGame</h2>
+            <div class="score-container" id="score">...</div>
+        </div>
+        <div class="clicker-box">
+            <button class="click-btn" id="coin-btn">🐱</button>
+        </div>
         <div class="panel">
-            <div style="font-size:14px;opacity:.8;margin-bottom:5px">Тема:</div>
-            <div class="theme-selector">
-                <button class="btn-theme" onclick="changeTheme('dark')">🌌 Тёмная</button>
-                <button class="btn-theme" onclick="changeTheme('light')">☀️ Светлая</button>
-                <button class="btn-theme" onclick="changeTheme('cosmic')">🔮 Космос</button>
+            <button class="btn-general" id="upgrade-click" disabled>⚔️ Сила клика</button>
+        </div>
+    </div>
+
+    <div class="screen" id="screen-settings">
+        <div style="width: 100%;">
+            <h2>Настройки</h2>
+            <div class="panel">
+                <div style="text-align: left; font-size: 14px; margin-bottom: 5px; opacity: 0.8;">Тема оформления:</div>
+                <div class="theme-selector">
+                    <button class="btn-theme" onclick="changeTheme('dark')">🌌 Тёмная</button>
+                    <button class="btn-theme" onclick="changeTheme('light')">☀️ Светлая</button>
+                    <button class="btn-theme" onclick="changeTheme('cosmic')">🔮 Космос</button>
+                </div>
+            </div>
+            <div class="panel" style="margin-top: 20px;">
+                <div style="text-align: left; font-size: 14px; opacity: 0.8;">Опасная зона:</div>
+                <button class="btn-danger" id="reset-btn">🔄 Сбросить весь прогресс</button>
             </div>
         </div>
-        <div class="panel">
-            <button class="btn-danger" id="reset-btn">🔄 Сбросить прогресс</button>
-        </div>
     </div>
-</div>
 
-<nav class="bottom-nav">
-    <button class="nav-item active" id="nav-main"><span class="nav-icon">🎮</span>Главная</button>
-    <button class="nav-item" id="nav-settings"><span class="nav-icon">⚙️</span>Настройки</button>
-</nav>
+    <nav class="bottom-nav">
+        <button class="nav-item active" id="nav-main"><span class="nav-icon">🎮</span><span>Главная</span></button>
+        <button class="nav-item" id="nav-settings"><span class="nav-icon">⚙️</span><span>Настройки</span></button>
+    </nav>
 
-<script>
-const API_URL = 'https://ve190-9.onrender.com';  // ← ЗАМЕНИТЕ
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.expand(); tg.ready(); }
+    <script>
+        // ВАШ АДРЕС RENDER
+        const API_URL = 'https://ve190-9.onrender.com'; 
+        
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.expand(); tg.ready(); }
 
-let coins = 0, clickPower = 1, costClick = 15;
-let pendingCoins = 0, pendingUpgrade = false;
-let currentTheme = localStorage.getItem('kisa_theme') || 'dark';
+        let coins = 0;
+        let clickPower = 1;
+        let costClick = 15;
+        let pendingCoins = 0;
+        let pendingUpgrade = false;
+        let currentTheme = localStorage.getItem('kisa_theme') || 'dark';
+        let syncTimer = null;
 
-const scoreEl = document.getElementById('score');
-const btnClick = document.getElementById('upgrade-click');
-const bodyEl = document.getElementById('app-body');
+        const scoreEl = document.getElementById('score');
+        const btnClick = document.getElementById('upgrade-click');
+        const bodyEl = document.getElementById('app-body');
 
-function changeTheme(name) {
-    currentTheme = name;
-    localStorage.setItem('kisa_theme', name);
-    bodyEl.className = '';
-    if (name === 'light') bodyEl.classList.add('theme-light');
-    if (name === 'cosmic') bodyEl.classList.add('theme-cosmic');
-}
-changeTheme(currentTheme);
+        function changeTheme(name) {
+            currentTheme = name;
+            localStorage.setItem('kisa_theme', name);
+            bodyEl.className = '';
+            if (name === 'light') bodyEl.classList.add('theme-light');
+            if (name === 'cosmic') bodyEl.classList.add('theme-cosmic');
+        }
+        changeTheme(currentTheme);
 
-function updateUI() {
-    scoreEl.innerText = coins + ' 🐾';
-    btnClick.innerText = `⚔️ Сила клика (+1) — ${costClick} 🐾`;
-    btnClick.disabled = coins < costClick;
-}
+        function updateUI() {
+            scoreEl.innerText = coins + ' 🐾';
+            btnClick.innerText = `⚔️ Сила клика (+1) — ${costClick} 🐾`;
+            btnClick.disabled = coins < costClick;
+        }
 
-async function loadProgress() {
-    if (!tg?.initData) {
-        coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
-        clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
-        costClick = 15 * clickPower;
-        updateUI();
-        return;
-    }
-    try {
-        const r = await fetch(`${API_URL}/api/load`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ initData: tg.initData })
-        });
-        const d = await r.json();
-        coins = d.coins ?? 0;
-        clickPower = d.clickPower ?? 1;
-        costClick = 15 * clickPower;
-    } catch(e) { console.warn('load failed', e); }
-    updateUI();
-}
+        // Безопасный запрос, чтобы игра не висла, если сервер спит
+        async function fetchWithTimeout(url, options, timeout = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
 
-let syncTimer = null;
-async function sync() {
-    if (!tg?.initData) {
-        localStorage.setItem('kisa_coins', coins);
-        localStorage.setItem('kisa_power', clickPower);
-        return;
-    }
-    if (pendingCoins === 0 && !pendingUpgrade) return;
+        async function loadProgress() {
+            if (!tg?.initData) {
+                coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
+                clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
+                costClick = 15 * clickPower;
+                updateUI();
+                return;
+            }
 
-    const add = pendingCoins;
-    const upg = pendingUpgrade;
-    pendingCoins = 0;
-    pendingUpgrade = false;
-
-    try {
-        const r = await fetch(`${API_URL}/api/sync`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
-        });
-        const d = await r.json();
-        if (d.coins !== undefined) {
-            coins = d.coins;
-            clickPower = d.clickPower;
-            costClick = 15 * clickPower;
+            try {
+                const r = await fetchWithTimeout(`${API_URL}/api/load`, {
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ initData: tg.initData })
+                }, 4000);
+                
+                const d = await r.json();
+                coins = d.coins ?? 0;
+                clickPower = d.clickPower ?? 1;
+                costClick = 15 * clickPower;
+            } catch(e) { 
+                console.warn('Сервер спит, играем локально', e);
+                coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
+                clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
+                costClick = 15 * clickPower;
+            }
             updateUI();
         }
-    } catch(e) {
-        pendingCoins += add;
-        pendingUpgrade = pendingUpgrade || upg;
-        console.warn('sync failed', e);
-    }
-}
 
-function scheduleSync() {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(sync, 800);
-}
+        async function sync() {
+            if (!tg?.initData) {
+                localStorage.setItem('kisa_coins', coins);
+                localStorage.setItem('kisa_power', clickPower);
+                return;
+            }
+            if (pendingCoins === 0 && !pendingUpgrade) return;
 
-document.getElementById('coin-btn').addEventListener('click', () => {
-    coins += clickPower;
-    pendingCoins += clickPower;
-    updateUI();
-    scheduleSync();
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-});
+            const add = pendingCoins;
+            const upg = pendingUpgrade;
+            pendingCoins = 0;
+            pendingUpgrade = false;
 
-btnClick.addEventListener('click', () => {
-    if (coins >= costClick) {
-        coins -= costClick;
-        clickPower += 1;
-        costClick = 15 * clickPower;
-        pendingCoins -= costClick;
-        pendingUpgrade = true;
-        updateUI();
-        scheduleSync();
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    }
-});
-
-document.getElementById('reset-btn').addEventListener('click', async () => {
-    if (!confirm('Сбросить весь прогресс?')) return;
-    coins = 0; clickPower = 1; costClick = 15;
-    updateUI();
-    if (tg?.initData) {
-        await fetch(`${API_URL}/api/sync`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ initData: tg.initData, addCoins: -coins, upgradePower: false })
-        }).catch(()=>{});
-    }
-    // локальный сброс
-    pendingCoins = 0; pendingUpgrade = false;
-    document.getElementById('nav-main').click();
-});
-
-document.getElementById('nav-main').addEventListener('click', () => {
-    document.getElementById('nav-main').classList.add('active');
-    document.getElementById('nav-settings').classList.remove('active');
-    document.getElementById('screen-main').classList.add('active');
-    document.getElementById('screen-settings').classList.remove('active');
-});
-document.getElementById('nav-settings').addEventListener('click', () => {
-    document.getElementById('nav-settings').classList.add('active');
-    document.getElementById('nav-main').classList.remove('active');
-    document.getElementById('screen-settings').classList.add('active');
-    document.getElementById('screen-main').classList.remove('active');
-});
-
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') sync();
-});
-
-// Периодический pull раз в 10 секунд
-setInterval(async () => {
-    if (!tg?.initData) return;
-    if (pendingCoins !== 0 || pendingUpgrade) return;
-    try {
-        const r = await fetch(`${API_URL}/api/load`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ initData: tg.initData })
-        });
-        const d = await r.json();
-        if (d.coins !== coins) {
-            coins = d.coins;
-            clickPower = d.clickPower;
-            costClick = 15 * clickPower;
-            updateUI();
+            try {
+                const r = await fetchWithTimeout(`${API_URL}/api/sync`, {
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
+                }, 5000);
+                
+                const d = await r.json();
+                if (d.coins !== undefined) {
+                    coins = d.coins;
+                    clickPower = d.clickPower;
+                    costClick = 15 * clickPower;
+                    updateUI();
+                }
+            } catch(e) {
+                pendingCoins += add;
+                pendingUpgrade = pendingUpgrade || upg;
+                console.warn('sync failed', e);
+            }
         }
-    } catch(e) {}
-}, 10000);
 
-loadProgress();
-</script>
+        function scheduleSync() {
+            clearTimeout(syncTimer);
+            syncTimer = setTimeout(sync, 800);
+        }
+
+        document.getElementById('coin-btn').addEventListener('click', () => {
+            coins += clickPower;
+            pendingCoins += clickPower;
+            updateUI();
+            scheduleSync();
+            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        });
+
+        btnClick.addEventListener('click', () => {
+            if (coins >= costClick) {
+                coins -= costClick;
+                clickPower += 1;
+                costClick = 15 * clickPower;
+                pendingCoins -= costClick;
+                pendingUpgrade = true;
+                updateUI();
+                scheduleSync();
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', async () => {
+            if (!confirm('Сбросить весь прогресс?')) return;
+            coins = 0; clickPower = 1; costClick = 15;
+            updateUI();
+            if (tg?.initData) {
+                try {
+                    await fetchWithTimeout(`${API_URL}/api/sync`, {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({ initData: tg.initData, addCoins: -99999999, upgradePower: false })
+                    });
+                } catch(e) {}
+            }
+            pendingCoins = 0; pendingUpgrade = false;
+            document.getElementById('nav-main').click();
+        });
+
+        document.getElementById('nav-main').addEventListener('click', () => {
+            document.getElementById('nav-main').classList.add('active');
+            document.getElementById('nav-settings').classList.remove('active');
+            document.getElementById('screen-main').classList.add('active');
+            document.getElementById('screen-settings').classList.remove('active');
+        });
+        document.getElementById('nav-settings').addEventListener('click', () => {
+            document.getElementById('nav-settings').classList.add('active');
+            document.getElementById('nav-main').classList.remove('active');
+            document.getElementById('screen-settings').classList.add('active');
+            document.getElementById('screen-main').classList.remove('active');
+        });
+
+        setInterval(async () => {
+            if (!tg?.initData) return;
+            if (pendingCoins !== 0 || pendingUpgrade) return;
+            try {
+                const r = await fetchWithTimeout(`${API_URL}/api/load`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ initData: tg.initData })
+                }, 5000);
+                const d = await r.json();
+                if (d.coins !== coins && d.coins !== undefined) {
+                    coins = d.coins;
+                    clickPower = d.clickPower;
+                    costClick = 15 * clickPower;
+                    updateUI();
+                }
+            } catch(e) {}
+        }, 10000);
+
+        loadProgress();
+    </script>
 </body>
 </html>
