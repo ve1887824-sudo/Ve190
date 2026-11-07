@@ -15,12 +15,10 @@
             <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
         </div>
         <div class="clicker-area">
-            <!-- ДВА ТАЙМЕРА БУСТОВ -->
             <div class="buff-container">
                 <div id="buff-click-timer" class="buff-timer hidden">🔥 Клик: <span id="buff-click-time">0:00</span></div>
                 <div id="buff-auto-timer" class="buff-timer hidden">🤖 Авто: <span id="buff-auto-time">0:00</span></div>
             </div>
-
             <div class="huge-balance"><span id="balance-main">0</span></div>
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
@@ -30,7 +28,6 @@
         </div>
     </div>
 
-    <!-- ОСТАЛЬНОЙ HTML ОСТАЕТСЯ ПРЕЖНИМ -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
         <div class="game-grid">
@@ -131,14 +128,41 @@
         <div class="leaderboard-list" id="leaderboard-container"></div>
     </div>
 
+    <!-- НОВЫЙ ЭКРАН НАСТРОЕК -->
+    <div class="screen" id="screen-settings">
+        <div class="header"><div class="logo">⚙️ Настройки</div></div>
+        <div style="padding: 20px;">
+            <div class="shop-section">
+                <h3>Тема оформления</h3>
+                <div class="theme-buttons">
+                    <button class="btn-theme" onclick="changeTheme('dark')">🌌 Тёмная</button>
+                    <button class="btn-theme" onclick="changeTheme('light')">☀️ Светлая</button>
+                    <button class="btn-theme" onclick="changeTheme('cosmic')">🔮 Космос</button>
+                </div>
+            </div>
+            <div class="shop-section" style="margin-top: 30px;">
+                <h3 style="color: var(--accent-red);">Опасная зона</h3>
+                <button class="btn-primary" style="background: var(--accent-red); color: white; margin-top: 10px;" onclick="resetProgress()">🔄 Сбросить весь прогресс</button>
+            </div>
+            <div style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 50px;">KisaGame v2.0 • Сервер</div>
+        </div>
+    </div>
+
     <nav class="bottom-nav">
         <button class="nav-item active" id="nav-main" onclick="switchScreen('screen-main')"><span class="nav-icon">🏠</span><span>Главная</span></button>
         <button class="nav-item" id="nav-games" onclick="switchScreen('screen-games')"><span class="nav-icon">🎮</span><span>Игры</span></button>
         <button class="nav-item" id="nav-bonus" onclick="switchScreen('screen-bonus')"><span class="nav-icon">🎁</span><span>Бонус</span></button>
         <button class="nav-item" id="nav-profile" onclick="switchScreen('screen-profile')"><span class="nav-icon">👤</span><span>Профиль</span></button>
         <button class="nav-item" id="nav-leader" onclick="switchScreen('screen-leaderboard')"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
+        <button class="nav-item" id="nav-settings" onclick="switchScreen('screen-settings')"><span class="nav-icon">⚙️</span><span>Настройки</span></button>
     </nav>
 
+    <script>
+        // Применяем тему при загрузке
+        const savedTheme = localStorage.getItem('kisa_theme') || 'dark';
+        if (savedTheme === 'light') document.body.classList.add('theme-light');
+        if (savedTheme === 'cosmic') document.body.classList.add('theme-cosmic');
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
