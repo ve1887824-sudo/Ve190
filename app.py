@@ -72,9 +72,13 @@ def load():
     row = cur.fetchone()
     conn.commit(); cur.close(); conn.close()
 
+    # Защита от null в базе данных
+    auto_click_val = row["auto_click"] if row["auto_click"] is not None else 0
+    click_power_val = row["click_power"] if row["click_power"] is not None else 1
+
     return jsonify({
-        "coins": row["coins"], "clickPower": row["click_power"],
-        "autoClick": row["auto_click"],
+        "coins": row["coins"], "clickPower": click_power_val,
+        "autoClick": auto_click_val,
         "username": row["username"], "photo_url": row["photo_url"],
         "user_id": uid, "games_played": row["games_played"],
         "wins": row["wins"], "losses": row["losses"],
