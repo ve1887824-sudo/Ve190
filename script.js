@@ -4,7 +4,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 
 let coins = 0, clickPower = 1, autoClickPower = 0;
-let pendingCoins = 0, pendingUpgrade = false; // pendingUpgrade теперь шлет флаг на сервер
+let pendingCoins = 0, pendingUpgrade = false;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
 
@@ -30,7 +30,6 @@ function updateUI() {
     document.getElementById('stat-balance').innerText = coins;
     document.getElementById('detail-balance').innerText = coins + ' Kisa';
     
-    // Обновляем кнопки в магазине
     const costPower = 15 + (clickPower * 10);
     const costAuto = 100 + (autoClickPower * 50);
     
@@ -44,17 +43,16 @@ function updateUI() {
     document.getElementById('btn-buff').disabled = coins < 500;
 }
 
-// Фоновая логика (бусты и автоклик)
+// Автоклик и проверка буста
 setInterval(() => {
-    // Автоклик
     if (autoClickPower > 0) {
         let earn = autoClickPower;
         coins += earn;
         pendingCoins += earn;
         updateUI();
+        scheduleSync();
     }
     
-    // Проверка буста
     if (buffEndTime > 0 && Date.now() > buffEndTime) {
         buffEndTime = 0;
         buffMultiplier = 1;
@@ -83,8 +81,6 @@ async function loadProgress() {
         userData = await r.json();
         coins = userData.coins ?? 0;
         clickPower = userData.clickPower ?? 1;
-        // autoClickPower мы пока не сохраняем на сервере, чтобы не менять app.py. 
-        // Если сервер вернет auto_click, можно подставить. Иначе 0.
         autoClickPower = userData.autoClick || 0; 
 
         document.getElementById('user-name').innerText = userData.username || "Игрок";
@@ -120,7 +116,6 @@ function scheduleSync() {
     syncTimer = setTimeout(sync, 1000);
 }
 
-// Клик
 document.getElementById('coin-btn').addEventListener('click', () => {
     let earn = clickPower * buffMultiplier;
     coins += earn; pendingCoins += earn;
@@ -136,22 +131,17 @@ window.buyUpgrade = function(type) {
     if (type === 'power') {
         let cost = 15 + (clickPower * 10);
         if (coins >= cost) {
-            coins -= cost;
-            clickPower += 1;
-            pendingCoins -= cost;
-            pendingUpgrade = true; // Отправляем флаг на сервер, чтобы он повысил силу
-            updateUI();
-            scheduleSync();
+            coins -= cost; clickPower += 1;
+            pendingCoins -= cost; pendingUpgrade = true; 
+            updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     } else if (type === 'auto') {
         let cost = 100 + (autoClickPower * 50);
         if (coins >= cost) {
-            coins -= cost;
-            autoClickPower += 1;
+            coins -= cost; autoClickPower += 1;
             pendingCoins -= cost;
-            updateUI();
-            scheduleSync();
+            updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     }
@@ -159,13 +149,11 @@ window.buyUpgrade = function(type) {
 
 window.buyBuff = function() {
     if (coins >= 500) {
-        coins -= 500;
-        pendingCoins -= 500;
+        coins -= 500; pendingCoins -= 500;
         buffMultiplier = 2;
-        buffEndTime = Date.now() + 5 * 60 * 1000; // 5 минут
-        updateUI();
-        scheduleSync();
-        document.getElementById('coin-btn').style.filter = 'drop-shadow(0 0 30px #FF5252)'; // Красное свечение
+        buffEndTime = Date.now() + 5 * 60 * 1000; 
+        updateUI(); scheduleSync();
+        document.getElementById('coin-btn').style.filter = 'drop-shadow(0 0 30px #FF5252)'; 
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         alert("🔥 Буст x2 активирован на 5 минут!");
     }
@@ -190,6 +178,160 @@ window.openGame = function(gameType) {
     } else if (gameType === 'dice') {
         title.innerText = "Кости (Больше 7)";
         ui.innerHTML = `<p>Выпадет больше 7?</p>
-            <div class="dice-container" id="dice-anim">
+            <div class="dice-container">
                 <div class="dice">⚀</div>
-                <div class="dice">
+                <div class="dice">⚀</div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+                <button class="btn-primary" style="width: 100px;" onclick="selectChoice('dice', true)">Да</button>
+                <button class="btn-primary" style="width: 100px; background: var(--accent-red);" onclick="selectChoice('dice', false)">Нет</button>
+            </div>`;
+    } else if (gameType === 'coin') {
+        title.innerText = "Монетка";
+        ui.innerHTML = `<p>Орел или Решка?</p>
+            <div class="coin-container"><div class="coin" id="coin-anim">🪙</div></div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
+                <button class="btn-primary" style="width: 100px;" onclick="selectChoice('coin', true)">Орел</button>
+                <button class="btn-primary" style="width: 100px; background: var(--accent-yellow); color: black;" onclick="selectChoice('coin', false)">Решка</button>
+            </div>`;
+    } else if (gameType === 'slots') {
+        title.innerText = "Слоты";
+        ui.innerHTML = `<p>Испытай удачу!</p>
+            <div class="slots-container" id="slots-anim">
+                <div class="slot-reel">🍒</div>
+                <div class="slot-reel">🍋</div>
+                <div class="slot-reel">💎</div>
+            </div>`;
+        gameChoice = true;
+    } else if (gameType === 'wheel') {
+        title.innerText = "Колесо Фортуны";
+        ui.innerHTML = `<p>Испытай удачу!</p>
+            <div class="wheel-container" id="wheel-anim">🎡</div>`;
+        gameChoice = true;
+    } else if (gameType === 'guess') {
+        title.innerText = "Угадай число";
+        ui.innerHTML = `<p>Выбери число от 1 до 10</p>
+            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
+            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="btn-primary" style="width: 50px; height: 50px; padding: 0; margin: 2px;" onclick="selectChoice('guess', ${n})">${n}</button>`).join('')}</div>`;
+    }
+}
+
+window.closeGame = function() { document.getElementById('game-modal').classList.remove('active'); }
+window.selectChoice = function(game, choice) { 
+    gameChoice = choice; 
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); 
+    // Визуальный отклик
+    document.querySelectorAll('.cup, .btn-primary').forEach(el => el.style.opacity = '0.5');
+    event.target.style.opacity = '1';
+}
+
+window.executeGame = async function() {
+    if (!gameChoice) { alert("Сделайте выбор!"); return; }
+    const bet = parseInt(document.getElementById('bet-input').value);
+    if (isNaN(bet) || bet <= 0 || bet > coins) { alert('Недостаточно монет!'); return; }
+
+    // Анимация
+    if (currentGame === 'dice') {
+        document.querySelectorAll('.dice').forEach(d => d.classList.add('rolling'));
+    } else if (currentGame === 'coin') {
+        document.getElementById('coin-anim').classList.add('flip');
+    } else if (currentGame === 'slots') {
+        document.querySelectorAll('.slot-reel').forEach(r => r.classList.add('spinning'));
+    } else if (currentGame === 'wheel') {
+        document.getElementById('wheel-anim').classList.add('spinning');
+    }
+
+    // Ждем анимацию перед результатом
+    setTimeout(async () => {
+        let win = false;
+        if (currentGame === 'cups') {
+            win = (gameChoice === Math.floor(Math.random() * 3) + 1);
+        } else if (currentGame === 'dice') {
+            const d1 = Math.ceil(Math.random() * 6);
+            const d2 = Math.ceil(Math.random() * 6);
+            const sum = d1 + d2;
+            alert(`Выпало: ${d1} и ${d2} = ${sum}`);
+            win = (gameChoice === (sum > 7));
+        } else if (currentGame === 'coin') {
+            const isHeads = Math.random() < 0.5;
+            alert(isHeads ? "Выпал Орел!" : "Выпала Решка!");
+            win = (gameChoice === isHeads);
+        } else if (currentGame === 'slots') {
+            win = Math.random() < 0.15;
+        } else if (currentGame === 'wheel') {
+            win = Math.random() < 0.2;
+        } else if (currentGame === 'guess') {
+            const num = Math.floor(Math.random() * 10) + 1;
+            alert(`Выпало число: ${num}`);
+            win = (gameChoice === num);
+        }
+
+        closeGame();
+        // Сброс анимаций
+        document.querySelectorAll('.dice').forEach(d => d.classList.remove('rolling'));
+        document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
+
+        try {
+            const r = await fetchWithTimeout(`${API_URL}/api/game`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ initData: tg.initData, bet: bet, win: win })
+            });
+            const d = await r.json();
+            if (d.coins !== undefined) {
+                coins = d.coins;
+                userData.games_played = (userData.games_played || 0) + 1;
+                if (win) userData.wins = (userData.wins || 0) + 1; else userData.losses = (userData.losses || 0) + 1;
+                
+                document.getElementById('stat-games').innerText = userData.games_played;
+                document.getElementById('stat-wins').innerText = userData.wins;
+                document.getElementById('stat-losses').innerText = userData.losses;
+                updateUI();
+                if (win) { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); alert(`🎉 Победа! +${bet} Kisa!`); }
+                else { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); alert(`😿 Проигрыш. -${bet} Kisa.`); }
+            }
+        } catch(e) { alert('Ошибка сети'); }
+    }, 600); // 600мс на анимацию
+}
+
+// БОНУС И РЕЙТИНГ
+function checkBonusStatus() {
+    const btn = document.getElementById('claim-bonus-btn');
+    const timer = document.getElementById('bonus-timer');
+    if (!userData.last_bonus) { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; return; }
+    const diff = 86400000 - (new Date().getTime() - new Date(userData.last_bonus).getTime());
+    if (diff > 0) {
+        btn.disabled = true;
+        timer.innerText = `Доступно через: ${Math.floor(diff / 3600000)}ч ${Math.floor((diff % 3600000) / 60000)}м`;
+        btn.innerText = "Уже получено";
+    } else { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; }
+}
+
+document.getElementById('claim-bonus-btn').addEventListener('click', async () => {
+    try {
+        const r = await fetchWithTimeout(`${API_URL}/api/bonus`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
+        if (r.ok) {
+            const d = await r.json();
+            coins = d.coins; userData.last_bonus = new Date().toISOString();
+            updateUI(); checkBonusStatus(); alert(`🎁 Вы получили ${d.amount} Kisa!`);
+        }
+    } catch(e) { alert('Ошибка'); }
+});
+
+async function loadLeaderboard() {
+    const container = document.getElementById('leaderboard-container');
+    try {
+        const r = await fetchWithTimeout(`${API_URL}/api/leaderboard`, { method: 'GET' });
+        const data = await r.json();
+        container.innerHTML = '';
+        if (data.length === 0) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Пока нет игроков</div>'; return; }
+        data.forEach((player, index) => {
+            container.innerHTML += `<div class="leader-row"><div class="leader-left">
+                <span class="leader-rank">${index + 1}</span>
+                <img class="leader-avatar" src="${player.photo_url || 'https://ui-avatars.com/api/?name='+(player.username||'U')+'&background=00D1FF&color=fff'}">
+                <span class="leader-name">${player.username || 'Игрок'}</span></div>
+                <span class="leader-coins">${player.coins} 🐾</span></div>`;
+        });
+    } catch(e) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Ошибка загрузки</div>'; }
+}
+
+loadProgress();
