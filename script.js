@@ -8,7 +8,7 @@ let pendingCoins = 0;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
 
-// Переменные для бустов
+// Два отдельных таймера
 let buffClickEndTime = 0;
 let buffAutoEndTime = 0;
 
@@ -44,7 +44,7 @@ function updateUI() {
 }
 
 setInterval(() => {
-    // Автоклик с учетом буста
+    // Автоклик с учетом его буста
     if (autoClickPower > 0) {
         let mult = (buffAutoEndTime > Date.now()) ? 2 : 1;
         let earn = autoClickPower * mult;
@@ -52,20 +52,26 @@ setInterval(() => {
         updateUI(); scheduleSync();
     }
     
-    // Таймер бустов
-    const buffEl = document.getElementById('buff-timer');
-    const buffTimeEl = document.getElementById('buff-time');
-    let activeBuff = 0;
-    
-    if (buffClickEndTime > Date.now()) activeBuff = buffClickEndTime;
-    if (buffAutoEndTime > Date.now() && buffAutoEndTime > activeBuff) activeBuff = buffAutoEndTime;
-
-    if (activeBuff > 0) {
-        buffEl.classList.remove('hidden');
-        const diff = Math.floor((activeBuff - Date.now()) / 1000);
-        buffTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
+    // Таймер буста клика
+    const clickEl = document.getElementById('buff-click-timer');
+    const clickTimeEl = document.getElementById('buff-click-time');
+    if (buffClickEndTime > Date.now()) {
+        clickEl.classList.remove('hidden');
+        const diff = Math.floor((buffClickEndTime - Date.now()) / 1000);
+        clickTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
     } else {
-        buffEl.classList.add('hidden');
+        clickEl.classList.add('hidden');
+    }
+
+    // Таймер буста автоклика
+    const autoEl = document.getElementById('buff-auto-timer');
+    const autoTimeEl = document.getElementById('buff-auto-time');
+    if (buffAutoEndTime > Date.now()) {
+        autoEl.classList.remove('hidden');
+        const diff = Math.floor((buffAutoEndTime - Date.now()) / 1000);
+        autoTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
+    } else {
+        autoEl.classList.add('hidden');
     }
 }, 1000);
 
@@ -147,12 +153,13 @@ window.buyUpgrade = function(type) {
 window.buyBuff = function(type) {
     if (type === 'click' && coins >= 500) {
         coins -= 500; pendingCoins -= 500;
-        // Если буст уже активен, добавляем 5 минут к текущему времени
+        // Суммирование времени, если буст уже работает
         buffClickEndTime = Math.max(Date.now(), buffClickEndTime) + 300000;
         updateUI(); scheduleSync();
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (type === 'auto' && coins >= 1000) {
         coins -= 1000; pendingCoins -= 1000;
+        // Суммирование времени автоклика
         buffAutoEndTime = Math.max(Date.now(), buffAutoEndTime) + 300000;
         updateUI(); scheduleSync();
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
