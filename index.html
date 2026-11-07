@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame Pro</title>
+    <title>KisaGame Pro Cloud</title>
     <script src="https://telegram.org"></script>
     <style>
         body {
@@ -26,25 +26,24 @@
             width: 100%; font-weight: bold; cursor: pointer; margin-top: 8px;
         }
         .btn-upgrade:disabled { background: #475569; opacity: 0.4; }
+        .cloud-status { font-size: 12px; color: #94a3b8; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div>
-        <h2>KisaGame - Игровая ферма</h2>
+        <h2>KisaGame Cloud</h2>
         <div class="score-container" id="score">0 🐾</div>
         <div class="passive-income" id="passive-text">Пассивный доход: +0/сек</div>
+        <div class="cloud-status" id="cloud-status">Загрузка сохранения...</div>
     </div>
 
-    <div class="clicker-box" id="clicker-area">
+    <div class="clicker-box">
         <button class="click-btn" id="coin-btn">🐱</button>
     </div>
 
     <div class="panel">
-        <div style="font-size: 14px; color: #94a3b8;">Улучшения как в GRAM:</div>
-        <!-- Прокачка клика -->
-        <button class="btn-upgrade" id="upgrade-click">⚔️ Сила клика +1 (Цена: 15 🐾)</button>
-        <!-- Покупка пассивной фермы -->
+        <button class="btn-upgrade" id="upgrade-click">⚔️ Сила клика (Цена: 15 🐾)</button>
         <button class="btn-upgrade" id="upgrade-farm">🚜 Купить ферму (+2/сек) (Цена: 50 🐾)</button>
     </div>
 
@@ -52,11 +51,10 @@
         let tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
-        // Состояние игры
+        // Игровые переменные
         let coins = 0;
         let clickPower = 1;
         let passiveIncome = 0;
-
         let costClick = 15;
         let costFarm = 50;
 
@@ -64,11 +62,46 @@
         const passiveText = document.getElementById('passive-text');
         const btnClick = document.getElementById('upgrade-click');
         const btnFarm = document.getElementById('upgrade-farm');
+        const cloudStatusEl = document.getElementById('cloud-status');
+
+        // ЗАГРУЗКА ДАННЫХ ИЗ ТЕЛЕГРАМА ПРИ СТАРТЕ
+        function loadFromCloud() {
+            if (tg && tg.CloudStorage) {
+                tg.CloudStorage.getItems(['coins', 'clickPower', 'passiveIncome', 'costClick', 'costFarm'], (err, values) => {
+                    if (!err) {
+                        if (values.coins) coins = parseInt(values.coins);
+                        if (values.clickPower) clickPower = parseInt(values.clickPower);
+                        if (values.passiveIncome) passiveIncome = parseInt(values.passiveIncome);
+                        if (values.costClick) costClick = parseInt(values.costClick);
+                        if (values.costFarm) costFarm = parseInt(values.costFarm);
+                        cloudStatusEl.innerText = "Прогресс успешно загружен из Telegram! ✅";
+                    } else {
+                        cloudStatusEl.innerText = "Ошибки загрузки. Играем сначала.";
+                    }
+                    updateUI();
+                });
+            } else {
+                cloudStatusEl.innerText = "Облако недоступно (запущено вне TG)";
+                updateUI();
+            }
+        }
+
+        // СОХРАНЕНИЕ ДАННЫХ В ТЕЛЕГРАМ
+        function saveToCloud() {
+            if (tg && tg.CloudStorage) {
+                tg.CloudStorage.setItem('coins', coins.toString());
+                tg.CloudStorage.setItem('clickPower', clickPower.toString());
+                tg.CloudStorage.setItem('passiveIncome', passiveIncome.toString());
+                tg.CloudStorage.setItem('costClick', costClick.toString());
+                tg.CloudStorage.setItem('costFarm', costFarm.toString());
+            }
+        }
 
         // Клик по котику
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             updateUI();
+            saveToCloud(); // Сохраняем каждый клик
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
@@ -79,40 +112,44 @@
                 clickPower += 1;
                 costClick = Math.round(costClick * 2.2);
                 updateUI();
+                saveToCloud();
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             }
         });
 
-        // Покупка Фермы (Пассивный доход)
+        // Покупка Фермы
         btnFarm.addEventListener('click', () => {
             if (coins >= costFarm) {
                 coins -= costFarm;
-                passiveIncome += 2; // Прибавляем к доходу в секунду
+                passiveIncome += 2;
                 costFarm = Math.round(costFarm * 2.5);
                 updateUI();
+                saveToCloud();
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             }
         });
 
-        // ГЛАВНЫЙ ТАЙМЕР ПАССИВНОГО ДОХОДА (Каждую секунду)
+        // Таймер пассивного дохода и автосохранения (каждую секунду)
         setInterval(() => {
             if (passiveIncome > 0) {
                 coins += passiveIncome;
                 updateUI();
+                saveToCloud(); // Автосохранение пассивного дохода
             }
         }, 1000);
 
         function updateUI() {
             scoreEl.innerText = coins + ' 🐾';
             passiveText.innerText = `Пассивный доход: +${passiveIncome}/сек`;
-            btnClick.innerText = `⚔️ Сила клика (Выгода: +1) — ${costClick} 🐾`;
-            btnFarm.innerText = `🚜 Купить ферму (Выгода: +2/сек) — ${costFarm} 🐾`;
+            btnClick.innerText = `⚔️ Сила клика (+1) — ${costClick} 🐾`;
+            btnFarm.innerText = `🚜 Купить ферму (+2/сек) — ${costFarm} 🐾`;
             
             btnClick.disabled = coins < costClick;
             btnFarm.disabled = coins < costFarm;
         }
 
-        updateUI();
+        // Запуск загрузки при старте
+        loadFromCloud();
     </script>
 </body>
 </html>
