@@ -8,7 +8,6 @@ let pendingCoins = 0;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
 
-// Два отдельных таймера
 let buffClickEndTime = 0;
 let buffAutoEndTime = 0;
 
@@ -44,7 +43,7 @@ function updateUI() {
 }
 
 setInterval(() => {
-    // Автоклик с учетом его буста
+    // Автоклик с учетом буста
     if (autoClickPower > 0) {
         let mult = (buffAutoEndTime > Date.now()) ? 2 : 1;
         let earn = autoClickPower * mult;
@@ -87,7 +86,11 @@ async function loadProgress() {
     try {
         const r = await fetchWithTimeout(`${API_URL}/api/load`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
         userData = await r.json();
-        coins = userData.coins ?? 0; clickPower = userData.clickPower ?? 1; autoClickPower = userData.autoClick ?? 0; 
+        
+        coins = userData.coins ?? 0; 
+        clickPower = userData.clickPower ?? 1; 
+        autoClickPower = userData.autoClick ?? 0; // ИСПРАВЛЕНО: теперь читает автоклик с сервера
+        
         document.getElementById('user-name').innerText = userData.username || "Игрок";
         document.getElementById('user-username').innerText = userData.username || "username";
         document.getElementById('user-id').innerText = userData.user_id;
@@ -153,13 +156,11 @@ window.buyUpgrade = function(type) {
 window.buyBuff = function(type) {
     if (type === 'click' && coins >= 500) {
         coins -= 500; pendingCoins -= 500;
-        // Суммирование времени, если буст уже работает
         buffClickEndTime = Math.max(Date.now(), buffClickEndTime) + 300000;
         updateUI(); scheduleSync();
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } else if (type === 'auto' && coins >= 1000) {
         coins -= 1000; pendingCoins -= 1000;
-        // Суммирование времени автоклика
         buffAutoEndTime = Math.max(Date.now(), buffAutoEndTime) + 300000;
         updateUI(); scheduleSync();
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
