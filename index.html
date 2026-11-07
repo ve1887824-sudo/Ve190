@@ -20,14 +20,13 @@
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
             
-            <!-- Заменили кнопку улучшения -->
             <button class="upgrade-btn" onclick="openShop()" style="justify-content: center; border-color: var(--accent-blue); box-shadow: 0 4px 15px rgba(0, 209, 255, 0.2);">
                 <span>🛒 Магазин улучшений</span>
             </button>
         </div>
     </div>
 
-    <!-- ЭКРАН ИГРЫ -->
+    <!-- ЭКРАН СПИСКА ИГР -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
         <div class="game-list">
@@ -40,18 +39,21 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ИГР -->
-    <div class="game-modal" id="game-modal">
-        <div class="modal-content">
-            <div class="close-modal" onclick="closeGame()">✕</div>
-            <h2 id="modal-title">Игра</h2>
-            
-            <div id="game-ui" class="game-ui-container">
-                <!-- Сюда JS будет вставлять анимации и кнопки -->
-            </div>
+    <!-- ЭКРАН САМОЙ ИГРЫ (ОТКРЫВАЕТСЯ КАК ВКЛАДКА) -->
+    <div class="screen" id="screen-game-play">
+        <div class="header" style="justify-content: flex-start; gap: 15px;">
+            <button class="back-btn" onclick="switchScreen('screen-games')">‹</button>
+            <div class="logo" id="game-header-title">Игра</div>
+        </div>
+        
+        <div class="game-play-area">
+            <!-- Сюда JS будет вставлять уникальный интерфейс и анимации игры -->
+            <div id="game-ui" class="game-ui-container"></div>
 
-            <input type="number" id="bet-input" class="bet-input" value="10" min="1">
-            <button class="btn-primary" id="play-btn" onclick="executeGame()">Играть</button>
+            <div class="game-controls">
+                <input type="number" id="bet-input" class="bet-input" value="10" min="1">
+                <button class="btn-primary" id="play-btn" onclick="executeGame()">Играть</button>
+            </div>
         </div>
     </div>
 
@@ -60,32 +62,21 @@
         <div class="modal-content">
             <div class="close-modal" onclick="closeShop()">✕</div>
             <h2>🛒 Магазин</h2>
-            
             <div class="shop-section">
                 <h3>Постоянные улучшения</h3>
                 <div class="shop-item">
-                    <div>
-                        <div class="shop-title">⚡ Сила клика</div>
-                        <div class="shop-desc">Увеличивает доход за 1 клик</div>
-                    </div>
+                    <div><div class="shop-title">⚡ Сила клика</div><div class="shop-desc">Увеличивает доход за 1 клик</div></div>
                     <button class="btn-shop" id="btn-up-power" onclick="buyUpgrade('power')">Купить</button>
                 </div>
                 <div class="shop-item">
-                    <div>
-                        <div class="shop-title">🤖 Автоклик</div>
-                        <div class="shop-desc">Пассивный доход в секунду</div>
-                    </div>
+                    <div><div class="shop-title">🤖 Автоклик</div><div class="shop-desc">Пассивный доход в секунду</div></div>
                     <button class="btn-shop" id="btn-up-auto" onclick="buyUpgrade('auto')">Купить</button>
                 </div>
             </div>
-
             <div class="shop-section">
                 <h3>Временные бусты</h3>
                 <div class="shop-item">
-                    <div>
-                        <div class="shop-title">🔥 x2 К клику</div>
-                        <div class="shop-desc">Удваивает силу клика на 5 минут</div>
-                    </div>
+                    <div><div class="shop-title">🔥 x2 К клику</div><div class="shop-desc">Удваивает силу клика на 5 минут</div></div>
                     <button class="btn-shop" id="btn-buff" onclick="buyBuff()">Купить</button>
                 </div>
             </div>
