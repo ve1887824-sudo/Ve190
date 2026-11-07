@@ -14,25 +14,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 def get_db():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-def init_db():
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                coins BIGINT DEFAULT 0,
-                click_power INTEGER DEFAULT 1
-            )
-        """)
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print("DB init error:", e)
-
-init_db()
-
 def verify_init_data(init_data: str):
     try:
         parsed = dict(parse_qsl(init_data))
@@ -51,16 +32,35 @@ def load():
     user = verify_init_data(request.json.get("initData", ""))
     if not user: return jsonify({"error": "invalid"}), 401
     uid = str(user["id"])
+    
+    # Получаем данные из Telegram
+    username = user.get("username", "Игрок")
+    photo_url = user.get("photo_url", "")
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT coins, click_power FROM users WHERE user_id = %s", (uid,))
+    
+    # Проверяем, есть ли игрок. Если нет - создаем с его именем и аватаркой
+    cur.execute("""
+        INSERT INTO users (user_id, coins, click_power, username, photo_url)
+        VALUES (%s, 0, 1, %s, %s)
+        ON CONFLICT(user_id) DO UPDATE SET
+            username = EXCLUDED.username,
+            photo_url = EXCLUDED.photo_url
+        RETURNING coins, click_power, username, photo_url
+    """, (uid, username, photo_url))
+    
     row = cur.fetchone()
+    conn.commit()
     cur.close(); conn.close()
 
-    if row:
-        return jsonify({"coins": row["coins"], "clickPower": row["click_power"]})
-    return jsonify({"coins": 0, "clickPower": 1})
+    return jsonify({
+        "coins": row["coins"], 
+        "clickPower": row["click_power"],
+        "username": row["username"],
+        "photo_url": row["photo_url"],
+        "user_id": uid
+    })
 
 @app.route("/api/sync", methods=["POST"])
 def sync():
