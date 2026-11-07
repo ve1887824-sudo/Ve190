@@ -37,38 +37,27 @@
         </div>
     </div>
 
-    <!-- НОВЫЙ ЭКРАН ИГРЫ -->
     <div class="screen" id="screen-game-play">
         <div class="header" style="justify-content: flex-start; gap: 15px; background: transparent;">
             <button class="back-btn" onclick="switchScreen('screen-games')">‹</button>
             <div class="logo" id="game-header-title">Игра</div>
         </div>
-        
         <div class="game-play-area">
-            <!-- Сама игра (барабаны, кости и т.д.) -->
             <div id="game-ui" class="game-ui-container"></div>
-
-            <!-- Панель выигрыша (скрыта по умолчанию) -->
             <div id="win-panel" class="win-panel hidden">
                 <div class="win-text">🎉 Победа! <span id="win-multiplier"></span></div>
                 <div class="win-amount">+<span id="win-amount">0</span></div>
             </div>
-
-            <!-- Прогресс-бар (для визуала) -->
             <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-
-            <!-- Панель ставок -->
             <div class="bet-panel">
                 <div class="bet-label">ВАША СТАВКА</div>
                 <input type="number" id="bet-input" class="bet-input" value="10" min="1">
-                
                 <div class="quick-bets">
                     <button class="quick-bet" onclick="setBet(100)">100</button>
                     <button class="quick-bet" onclick="setBet(1000)">1 000</button>
                     <button class="quick-bet" onclick="setBet(5000)">5 000</button>
                     <button class="quick-bet" onclick="setBet(coins)">Весь баланс</button>
                 </div>
-
                 <button class="btn-play" id="play-btn" onclick="executeGame()">Крутить</button>
             </div>
         </div>
@@ -93,7 +82,11 @@
                 <h3>Временные бусты</h3>
                 <div class="shop-item">
                     <div><div class="shop-title">🔥 x2 К клику</div></div>
-                    <button class="btn-shop" id="btn-buff" onclick="buyBuff()">Купить</button>
+                    <button class="btn-shop" id="btn-buff-click" onclick="buyBuff('click')">Купить</button>
+                </div>
+                <div class="shop-item">
+                    <div><div class="shop-title">🤖 x2 К автоклику</div></div>
+                    <button class="btn-shop" id="btn-buff-auto" onclick="buyBuff('auto')">Купить</button>
                 </div>
             </div>
         </div>
