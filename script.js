@@ -4,7 +4,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 
 let coins = 0, clickPower = 1, autoClickPower = 0;
-let pendingCoins = 0, pendingUpgrade = false;
+let pendingCoins = 0;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
 let buffMultiplier = 1, buffEndTime = 0;
@@ -82,13 +82,34 @@ async function loadProgress() {
     updateUI();
 }
 
+// ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ
 async function sync() {
-    if (!tg?.initData || (pendingCoins === 0 && !pendingUpgrade)) return;
-    const add = pendingCoins, upg = pendingUpgrade;
-    pendingCoins = 0; pendingUpgrade = false;
+    if (!tg?.initData) return;
+    // Отправляем данные, если изменились монеты ИЛИ сила клика/автоклик
+    if (pendingCoins === 0 && clickPower === userData.clickPower && autoClickPower === userData.autoClick) return;
+    
+    const add = pendingCoins;
+    const currentPower = clickPower;
+    const currentAuto = autoClickPower;
+    
+    pendingCoins = 0; 
+    userData.clickPower = currentPower; 
+    userData.autoClick = currentAuto;
+    
     try {
-        await fetchWithTimeout(`${API_URL}/api/sync`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg }) });
-    } catch(e) { pendingCoins += add; }
+        await fetchWithTimeout(`${API_URL}/api/sync`, { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body: JSON.stringify({ 
+                initData: tg.initData, 
+                addCoins: add, 
+                clickPower: currentPower, 
+                autoClick: currentAuto 
+            }) 
+        });
+    } catch(e) { 
+        pendingCoins += add; 
+    }
 }
 
 function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(sync, 1000); }
@@ -102,15 +123,37 @@ document.getElementById('coin-btn').addEventListener('click', () => {
 
 window.openShop = function() { document.getElementById('shop-modal').classList.add('active'); updateUI(); }
 window.closeShop = function() { document.getElementById('shop-modal').classList.remove('active'); }
+
 window.buyUpgrade = function(type) {
-    if (type === 'power' && coins >= 15 + (clickPower * 10)) {
-        coins -= 15 + (clickPower * 10); clickPower++; pendingUpgrade = true; updateUI(); scheduleSync();
-    } else if (type === 'auto' && coins >= 100 + (autoClickPower * 50)) {
-        coins -= 100 + (autoClickPower * 50); autoClickPower++; updateUI(); scheduleSync();
+    if (type === 'power') {
+        let cost = 15 + (clickPower * 10);
+        if (coins >= cost) {
+            coins -= cost; 
+            clickPower += 1; 
+            pendingCoins -= cost; 
+            updateUI(); scheduleSync();
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+    } else if (type === 'auto') {
+        let cost = 100 + (autoClickPower * 50);
+        if (coins >= cost) {
+            coins -= cost; 
+            autoClickPower += 1; 
+            pendingCoins -= cost;
+            updateUI(); scheduleSync();
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
     }
 }
+
 window.buyBuff = function() {
-    if (coins >= 500) { coins -= 500; buffMultiplier = 2; buffEndTime = Date.now() + 300000; updateUI(); scheduleSync(); }
+    if (coins >= 500) { 
+        coins -= 500; 
+        pendingCoins -= 500;
+        buffMultiplier = 2; 
+        buffEndTime = Date.now() + 300000; 
+        updateUI(); scheduleSync(); 
+    }
 }
 
 window.setBet = function(amount) { document.getElementById('bet-input').value = amount > coins ? coins : amount; }
@@ -176,7 +219,6 @@ window.executeGame = async function() {
     playBtn.disabled = true; playBtn.innerText = "Ждем-с...";
     document.getElementById('progress-fill').style.width = '100%';
 
-    // Запуск анимаций
     if (currentGame === 'dice') document.querySelectorAll('.dice-box').forEach(d => d.classList.add('rolling'));
     else if (currentGame === 'coin') document.getElementById('coin-obj').classList.add('flipping');
     else if (currentGame === 'slots') {
@@ -212,7 +254,6 @@ window.executeGame = async function() {
             if (d.coins !== undefined) {
                 coins = d.coins; updateUI();
                 
-                // Показываем панель выигрыша
                 if (win) {
                     document.getElementById('win-panel').classList.remove('hidden');
                     document.getElementById('win-amount').innerText = bet * (mult || 2) - bet;
@@ -224,12 +265,11 @@ window.executeGame = async function() {
             }
         } catch(e) { alert('Ошибка сети'); }
         
-        // Сброс анимаций
         document.querySelectorAll('.dice-box, .slot-reel').forEach(el => el.classList.remove('rolling', 'spinning'));
         if(document.getElementById('coin-obj')) document.getElementById('coin-obj').classList.remove('flipping');
         document.getElementById('progress-fill').style.width = '0%';
         playBtn.disabled = false; playBtn.innerText = "Играть снова";
-    }, 2000); // 2 секунды анимации
+    }, 2000);
 }
 
 function checkBonusStatus() {
