@@ -193,3 +193,17 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .guess-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px; width: 100%; }
 .guess-btn { padding: 15px 0; background: var(--bg-card); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: center;}
 .guess-btn.selected { background: var(--accent-blue); color: black; border-color: #fff; transform: scale(1.1); }
+/* --- ДОБАВИТЬ В КОНЕЦ style.css --- */
+.buff-timer {
+    background: rgba(255, 82, 82, 0.2);
+    color: #FF5252;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    border: 1px solid #FF5252;
+    animation: pulse 1s infinite;
+    margin-bottom: 15px;
+}
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.hidden { display: none !important; }
