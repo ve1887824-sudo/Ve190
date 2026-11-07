@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame</title>
-    <!-- Скрипт Telegram для вибрации -->
+    <title>KisaGame Server Sync</title>
     <script src="https://telegram.org"></script>
     <style>
         body {
@@ -17,22 +16,20 @@
         }
         .score-container { font-size: 52px; font-weight: bold; color: #f1c40f; margin-top: 20px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
         .clicker-box { position: relative; margin: 40px 0; }
-        .click-btn { font-size: 130px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; -webkit-tap-highlight-color: transparent; }
+        .click-btn { font-size: 130px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; }
         .click-btn:active { transform: scale(0.85); }
         .panel { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; width: 100%; max-width: 320px; margin-bottom: 20px; }
-        .btn-upgrade {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white;
-            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
-            width: 100%; font-weight: bold; cursor: pointer;
-        }
-        .btn-upgrade:disabled { background: #475569; opacity: 0.4; cursor: not-allowed; }
+        .btn-upgrade { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 14px; font-size: 15px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; }
+        .btn-upgrade:disabled { background: #475569; opacity: 0.4; }
+        .status { font-size: 12px; color: #a8a29e; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div>
-        <h2>KisaGame</h2>
+        <h2>KisaGame Pro</h2>
         <div class="score-container" id="score">0 🐾</div>
+        <div class="status">Облачная синхронизация включена</div>
     </div>
 
     <div class="clicker-box">
@@ -47,7 +44,7 @@
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
-        // Загрузка сохраненного прогресса из памяти планшета
+        // Берем данные из локальной памяти, но при закрытии отправим их серверу
         let coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
         let clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
         let costClick = 15 * clickPower;
@@ -55,28 +52,30 @@
         const scoreEl = document.getElementById('score');
         const btnClick = document.getElementById('upgrade-click');
 
-        // Функция сохранения данных на планшет
-        function saveToDevice() {
+        function saveData() {
             localStorage.setItem('kisa_coins', coins);
             localStorage.setItem('kisa_power', clickPower);
+            
+            // ОТПРАВКА ДАННЫХ БОТУ (Для переноса между устройствами)
+            if (tg) {
+                tg.sendData(`${coins}|${clickPower}`);
+            }
         }
 
-        // Клик по котику
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             updateUI();
-            saveToDevice(); // Мгновенное сохранение на устройство
+            saveData();
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
-        // Прокачка силы клика
         btnClick.addEventListener('click', () => {
             if (coins >= costClick) {
                 coins -= costClick;
                 clickPower += 1;
                 costClick = 15 * clickPower;
                 updateUI();
-                saveToDevice(); // Сохраняем апгрейд
+                saveData();
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             }
         });
@@ -87,7 +86,6 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Первоначальное обновление экрана при старте
         updateUI();
     </script>
 </body>
