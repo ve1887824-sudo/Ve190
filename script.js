@@ -7,7 +7,10 @@ let coins = 0, clickPower = 1, autoClickPower = 0;
 let pendingCoins = 0;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
-let buffMultiplier = 1, buffEndTime = 0;
+
+// Переменные для бустов
+let buffClickEndTime = 0;
+let buffAutoEndTime = 0;
 
 window.switchScreen = function(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -33,28 +36,36 @@ function updateUI() {
         document.getElementById('btn-up-power').disabled = coins < costPower;
         document.getElementById('btn-up-auto').innerText = `${costAuto} 🐾`;
         document.getElementById('btn-up-auto').disabled = coins < costAuto;
-        document.getElementById('btn-buff').innerText = `500 🐾`;
-        document.getElementById('btn-buff').disabled = coins < 500;
+        document.getElementById('btn-buff-click').innerText = `500 🐾`;
+        document.getElementById('btn-buff-click').disabled = coins < 500;
+        document.getElementById('btn-buff-auto').innerText = `1000 🐾`;
+        document.getElementById('btn-buff-auto').disabled = coins < 1000;
     }
 }
 
 setInterval(() => {
+    // Автоклик с учетом буста
     if (autoClickPower > 0) {
-        let earn = autoClickPower;
+        let mult = (buffAutoEndTime > Date.now()) ? 2 : 1;
+        let earn = autoClickPower * mult;
         coins += earn; pendingCoins += earn;
         updateUI(); scheduleSync();
     }
+    
+    // Таймер бустов
     const buffEl = document.getElementById('buff-timer');
     const buffTimeEl = document.getElementById('buff-time');
-    if (buffEndTime > 0) {
-        const now = Date.now();
-        if (now > buffEndTime) {
-            buffEndTime = 0; buffMultiplier = 1; buffEl.classList.add('hidden');
-        } else {
-            buffEl.classList.remove('hidden');
-            const diff = Math.floor((buffEndTime - now) / 1000);
-            buffTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
-        }
+    let activeBuff = 0;
+    
+    if (buffClickEndTime > Date.now()) activeBuff = buffClickEndTime;
+    if (buffAutoEndTime > Date.now() && buffAutoEndTime > activeBuff) activeBuff = buffAutoEndTime;
+
+    if (activeBuff > 0) {
+        buffEl.classList.remove('hidden');
+        const diff = Math.floor((activeBuff - Date.now()) / 1000);
+        buffTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
+    } else {
+        buffEl.classList.add('hidden');
     }
 }, 1000);
 
@@ -82,10 +93,8 @@ async function loadProgress() {
     updateUI();
 }
 
-// ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ
 async function sync() {
     if (!tg?.initData) return;
-    // Отправляем данные, если изменились монеты ИЛИ сила клика/автоклик
     if (pendingCoins === 0 && clickPower === userData.clickPower && autoClickPower === userData.autoClick) return;
     
     const add = pendingCoins;
@@ -98,24 +107,17 @@ async function sync() {
     
     try {
         await fetchWithTimeout(`${API_URL}/api/sync`, { 
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body: JSON.stringify({ 
-                initData: tg.initData, 
-                addCoins: add, 
-                clickPower: currentPower, 
-                autoClick: currentAuto 
-            }) 
+            method:'POST', headers:{'Content-Type':'application/json'}, 
+            body: JSON.stringify({ initData: tg.initData, addCoins: add, clickPower: currentPower, autoClick: currentAuto }) 
         });
-    } catch(e) { 
-        pendingCoins += add; 
-    }
+    } catch(e) { pendingCoins += add; }
 }
 
 function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(sync, 1000); }
 
 document.getElementById('coin-btn').addEventListener('click', () => {
-    let earn = clickPower * buffMultiplier;
+    let mult = (buffClickEndTime > Date.now()) ? 2 : 1;
+    let earn = clickPower * mult;
     coins += earn; pendingCoins += earn;
     updateUI(); scheduleSync();
     if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -128,31 +130,32 @@ window.buyUpgrade = function(type) {
     if (type === 'power') {
         let cost = 15 + (clickPower * 10);
         if (coins >= cost) {
-            coins -= cost; 
-            clickPower += 1; 
-            pendingCoins -= cost; 
+            coins -= cost; clickPower += 1; pendingCoins -= cost; 
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     } else if (type === 'auto') {
         let cost = 100 + (autoClickPower * 50);
         if (coins >= cost) {
-            coins -= cost; 
-            autoClickPower += 1; 
-            pendingCoins -= cost;
+            coins -= cost; autoClickPower += 1; pendingCoins -= cost;
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     }
 }
 
-window.buyBuff = function() {
-    if (coins >= 500) { 
-        coins -= 500; 
-        pendingCoins -= 500;
-        buffMultiplier = 2; 
-        buffEndTime = Date.now() + 300000; 
-        updateUI(); scheduleSync(); 
+window.buyBuff = function(type) {
+    if (type === 'click' && coins >= 500) {
+        coins -= 500; pendingCoins -= 500;
+        // Если буст уже активен, добавляем 5 минут к текущему времени
+        buffClickEndTime = Math.max(Date.now(), buffClickEndTime) + 300000;
+        updateUI(); scheduleSync();
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } else if (type === 'auto' && coins >= 1000) {
+        coins -= 1000; pendingCoins -= 1000;
+        buffAutoEndTime = Math.max(Date.now(), buffAutoEndTime) + 300000;
+        updateUI(); scheduleSync();
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     }
 }
 
@@ -232,28 +235,18 @@ window.executeGame = async function() {
         let win = false;
         let mult = 0;
         
-        if (currentGame === 'cups') {
-            win = (gameChoice === Math.floor(Math.random()*3)+1);
-        } else if (currentGame === 'dice') {
-            win = (gameChoice === ((Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6)) > 7));
-            mult = 2;
-        } else if (currentGame === 'coin') {
-            win = (gameChoice === (Math.random()<0.5));
-            mult = 2;
-        } else if (currentGame === 'slots') {
-            win = Math.random() < 0.2; mult = 10;
-        } else if (currentGame === 'wheel') {
-            win = Math.random() < 0.2; mult = 5;
-        } else if (currentGame === 'guess') {
-            win = (gameChoice === Math.floor(Math.random()*10)+1); mult = 10;
-        }
+        if (currentGame === 'cups') { win = (gameChoice === Math.floor(Math.random()*3)+1); }
+        else if (currentGame === 'dice') { win = (gameChoice === ((Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6)) > 7)); mult = 2; }
+        else if (currentGame === 'coin') { win = (gameChoice === (Math.random()<0.5)); mult = 2; }
+        else if (currentGame === 'slots') { win = Math.random() < 0.2; mult = 10; }
+        else if (currentGame === 'wheel') { win = Math.random() < 0.2; mult = 5; }
+        else if (currentGame === 'guess') { win = (gameChoice === Math.floor(Math.random()*10)+1); mult = 10; }
 
         try {
             const r = await fetchWithTimeout(`${API_URL}/api/game`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData, bet: bet, win: win }) });
             const d = await r.json();
             if (d.coins !== undefined) {
                 coins = d.coins; updateUI();
-                
                 if (win) {
                     document.getElementById('win-panel').classList.remove('hidden');
                     document.getElementById('win-amount').innerText = bet * (mult || 2) - bet;
