@@ -43,7 +43,6 @@ function updateUI() {
 }
 
 setInterval(() => {
-    // Автоклик с учетом буста
     if (autoClickPower > 0) {
         let mult = (buffAutoEndTime > Date.now()) ? 2 : 1;
         let earn = autoClickPower * mult;
@@ -51,7 +50,6 @@ setInterval(() => {
         updateUI(); scheduleSync();
     }
     
-    // Таймер буста клика
     const clickEl = document.getElementById('buff-click-timer');
     const clickTimeEl = document.getElementById('buff-click-time');
     if (buffClickEndTime > Date.now()) {
@@ -62,7 +60,6 @@ setInterval(() => {
         clickEl.classList.add('hidden');
     }
 
-    // Таймер буста автоклика
     const autoEl = document.getElementById('buff-auto-timer');
     const autoTimeEl = document.getElementById('buff-auto-time');
     if (buffAutoEndTime > Date.now()) {
@@ -87,9 +84,10 @@ async function loadProgress() {
         const r = await fetchWithTimeout(`${API_URL}/api/load`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
         userData = await r.json();
         
-        coins = userData.coins ?? 0; 
-        clickPower = userData.clickPower ?? 1; 
-        autoClickPower = userData.autoClick ?? 0; // ИСПРАВЛЕНО: теперь читает автоклик с сервера
+        // Принудительно делаем числами, чтобы избежать null
+        coins = parseInt(userData.coins) || 0; 
+        clickPower = parseInt(userData.clickPower) || 1; 
+        autoClickPower = parseInt(userData.autoClick) || 0; 
         
         document.getElementById('user-name').innerText = userData.username || "Игрок";
         document.getElementById('user-username').innerText = userData.username || "username";
