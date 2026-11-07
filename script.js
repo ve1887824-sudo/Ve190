@@ -263,7 +263,7 @@ window.executeGame = async function() {
             const isHeads = Math.random() < 0.5;
             win = (gameChoice === isHeads);
             resultMsg = isHeads ? "Выпал Орел!" : "Выпала Решка!";
-        } else if (currentGame === 'slots') {
+                } else if (currentGame === 'slots') {
             win = Math.random() < 0.15;
             resultMsg = win ? "ДЖЕКПОТ! 🎰" : "Не повезло...";
         } else if (currentGame === 'wheel') {
@@ -301,7 +301,7 @@ window.executeGame = async function() {
             }
         } catch(e) { alert('Ошибка сети'); }
         
-        // Возвращаем всё в исходное состояние
+        // Сброс анимаций
         document.querySelectorAll('.dice-box').forEach(d => d.classList.remove('rolling'));
         document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
         if(document.getElementById('coin-obj')) document.getElementById('coin-obj').classList.remove('flipping');
