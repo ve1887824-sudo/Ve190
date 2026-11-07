@@ -1,53 +1,74 @@
-import os, hmac, hashlib, json, sqlite3
+import os, hmac, hashlib, json
 from urllib.parse import parse_qsl
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 CORS(app)
-BOT_TOKEN = os.environ["BOT_TOKEN"]
 
-DB_PATH = "game.db"
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+# === Подключение к БД ===
+def get_db():
+    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+    return conn
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""CREATE TABLE IF NOT EXISTS users (
-        user_id TEXT PRIMARY KEY,
-        coins INTEGER DEFAULT 0,
-        click_power INTEGER DEFAULT 1
-    )""")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            coins BIGINT DEFAULT 0,
+            click_power INTEGER DEFAULT 1
+        )
+    """)
     conn.commit()
+    cur.close()
     conn.close()
 
 init_db()
 
+# === Проверка initData от Telegram ===
 def verify_init_data(init_data: str):
-    parsed = dict(parse_qsl(init_data))
-    received_hash = parsed.pop("hash", None)
-    if not received_hash:
+    try:
+        parsed = dict(parse_qsl(init_data))
+        received_hash = parsed.pop("hash", None)
+        if not received_hash:
+            return None
+        dcs = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
+        secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+        calc = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
+        if calc != received_hash:
+            return None
+        return json.loads(parsed.get("user", "{}")) or None
+    except Exception as e:
+        print("verify error:", e)
         return None
-    dcs = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
-    secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-    calc = hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest()
-    if calc != received_hash:
-        return None
-    return json.loads(parsed.get("user", "{}")) or None
 
+# === API: загрузка прогресса ===
 @app.route("/api/load", methods=["POST"])
 def load():
     user = verify_init_data(request.json.get("initData", ""))
     if not user:
         return jsonify({"error": "invalid"}), 401
     uid = str(user["id"])
-    conn = sqlite3.connect(DB_PATH)
-    row = conn.execute(
-        "SELECT coins, click_power FROM users WHERE user_id=?", (uid,)
-    ).fetchone()
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT coins, click_power FROM users WHERE user_id = %s", (uid,))
+    row = cur.fetchone()
+    cur.close()
     conn.close()
+
     if row:
-        return jsonify({"coins": row[0], "clickPower": row[1]})
+        return jsonify({"coins": row["coins"], "clickPower": row["click_power"]})
     return jsonify({"coins": 0, "clickPower": 1})
 
+# === API: синхронизация ===
 @app.route("/api/sync", methods=["POST"])
 def sync():
     payload = request.json
@@ -59,26 +80,33 @@ def sync():
     add_coins = int(payload.get("addCoins", 0))
     upgrade = bool(payload.get("upgradePower", False))
 
-    # защита от абсурдных значений
     if abs(add_coins) > 100000:
         return jsonify({"error": "too much"}), 400
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("""
         INSERT INTO users (user_id, coins, click_power)
-        VALUES (?, MAX(0, ?), ?)
+        VALUES (%s, GREATEST(0, %s), %s)
         ON CONFLICT(user_id) DO UPDATE SET
-            coins = MAX(0, coins + ?),
-            click_power = click_power + ?
-    """, (uid, add_coins, 1 + (1 if upgrade else 0),
-          add_coins, 1 if upgrade else 0))
+            coins = GREATEST(0, users.coins + %s),
+            click_power = users.click_power + %s
+        RETURNING coins, click_power
+    """, (
+        uid,
+        add_coins,
+        1 + (1 if upgrade else 0),
+        add_coins,
+        1 if upgrade else 0
+    ))
+    row = cur.fetchone()
     conn.commit()
-    row = conn.execute(
-        "SELECT coins, click_power FROM users WHERE user_id=?", (uid,)
-    ).fetchone()
+    cur.close()
     conn.close()
-    return jsonify({"coins": row[0], "clickPower": row[1]})
 
+    return jsonify({"coins": row["coins"], "clickPower": row["click_power"]})
+
+# === Health-check ===
 @app.route("/")
 def index():
     return "KisaGame server OK"
