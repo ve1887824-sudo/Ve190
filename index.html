@@ -3,94 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Mini App</title>
+    <title>KisaGame - Кликер</title>
     <!-- Подключаем официальный скрипт Telegram -->
     <script src="https://telegram.org"></script>
     <style>
-        /* Используем системные цвета Telegram для нативного вида */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 80vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle, #2c3e50, #0f172a);
+            color: #ffffff;
+            margin: 0; padding: 20px; text-align: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            min-height: 90vh; user-select: none; -webkit-user-select: none;
         }
-        .avatar {
-            width: 80px;
-            height: 80px;
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 20px;
+        .header { margin-top: 20px; }
+        .score-container { font-size: 46px; font-weight: bold; color: #f1c40f; margin: 10px 0; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
+        .clicker-box { position: relative; margin: 40px 0; }
+        .click-btn {
+            font-size: 110px; background: none; border: none; cursor: pointer;
+            transition: transform 0.05s ease; outline: none; -webkit-tap-highlight-color: transparent;
         }
-        h1 { font-size: 24px; margin: 10px 0; }
-        p { color: var(--tg-theme-hint-color, #999999); font-size: 16px; }
-        .btn {
-            background-color: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-weight: 500;
-            transition: opacity 0.2s;
+        .click-btn:active { transform: scale(0.90); }
+        .upgrade-section { width: 100%; max-width: 300px; margin-bottom: 20px; }
+        .btn-upgrade {
+            background: linear-gradient(135deg, #e67e22, #d35400); color: white;
+            border: none; padding: 15px; font-size: 16px; border-radius: 12px;
+            width: 100%; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(211, 84, 0, 0.4);
+            transition: background 0.2s;
         }
-        .btn:active { opacity: 0.8; }
+        .btn-upgrade:disabled { background: #7f8c8d; box-shadow: none; opacity: 0.5; cursor: not-allowed; }
+        .floating-text {
+            position: absolute; font-size: 28px; font-weight: bold; color: #f1c40f;
+            animation: floatUp 0.6s ease-out forwards; pointer-events: none;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-120px) scale(1.3); }
+        }
     </style>
 </head>
 <body>
 
-    <div class="avatar" id="user-avatar">?</div>
-    <h1>Привет, <span id="user-name">Пользователь</span>!</h1>
-    <p>Твой ID: <span id="user-id">неизвестен</span></p>
-    
-    <button class="btn" id="action-btn">Проверить работу</button>
+    <div class="header">
+        <h2>Баланс KisaGame</h2>
+        <div class="score-container" id="score">0 🐾</div>
+        <p id="cps-text">Клик: +1</p>
+    </div>
+
+    <div class="clicker-box" id="clicker-area">
+        <button class="click-btn" id="coin-btn">🐱</button>
+    </div>
+
+    <div class="upgrade-section">
+        <button class="btn-upgrade" id="upgrade-btn">Прокачать клик (Цена: 15 🐾)</button>
+    </div>
 
     <script>
-        // Инициализируем Telegram WebApp
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        
-        // Расширяем приложение на всю высоту экрана
         tg.expand();
-        
-        // Сообщаем Telegram, что приложение готово к отрисовке
         tg.ready();
 
-        // Проверяем, запущен ли сайт внутри Telegram
-        if (tg.initDataUnsafe?.user) {
-            const user = tg.initDataUnsafe.user;
+        let coins = 0;
+        let clickPower = 1;
+        let upgradeCost = 15;
+
+        const scoreEl = document.getElementById('score');
+        const coinBtn = document.getElementById('coin-btn');
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        const cpsText = document.getElementById('cps-text');
+        const clickerArea = document.getElementById('clicker-area');
+
+        // Клик по котику
+        coinBtn.addEventListener('click', (e) => {
+            coins += clickPower;
+            scoreEl.innerText = coins + ' 🐾';
             
-            // Выводим имя и ID пользователя
-            document.getElementById('user-name').innerText = user.first_name;
-            document.getElementById('user-id').innerText = user.id;
+            // Легкая вибрация при каждом тапе
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            // Вылет цифры +1 / +2
+            createFloatingText(e);
             
-            // Ставим первую букву имени в аватарку
-            document.getElementById('user-avatar').innerText = user.first_name.charAt(0);
+            checkUpgrade();
+        });
+
+        // Покупка улучшения силы клика
+        upgradeBtn.addEventListener('click', () => {
+            if (coins >= upgradeCost) {
+                coins -= upgradeCost;
+                clickPower += 1;
+                upgradeCost = Math.round(upgradeCost * 2.5); // Увеличение цены
+                
+                scoreEl.innerText = coins + ' 🐾';
+                cpsText.innerText = `Клик: +${clickPower}`;
+                upgradeBtn.innerText = `Прокачать клик (Цена: ${upgradeCost} 🐾)`;
+                
+                // Уведомительная вибрация успеха
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+                checkUpgrade();
+            }
+        });
+
+        function checkUpgrade() {
+            upgradeBtn.disabled = coins < upgradeCost;
         }
 
-        // Навешиваем действие на кнопку
-        document.getElementById('action-btn').addEventListener('click', () => {
-            // Запускаем легкую вибрацию смартфона
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
+        function createFloatingText(e) {
+            const text = document.createElement('div');
+            text.className = 'floating-text';
+            text.innerText = `+${clickPower}`;
             
-            // Показываем нативное всплывающее окно Telegram
-            tg.showAlert("Ура! Mini App работает с планшета!");
-        });
+            const rect = clickerArea.getBoundingClientRect();
+            const x = (e.clientX || rect.left + rect.width / 2) - rect.left - 10;
+            const y = (e.clientY || rect.top + rect.height / 2) - rect.top - 20;
+            
+            text.style.left = x + 'px';
+            text.style.top = y + 'px';
+            
+            clickerArea.appendChild(text);
+            setTimeout(() => text.remove(), 600);
+        }
+
+        // Первоначальная проверка кнопки
+        checkUpgrade();
     </script>
 </body>
 </html>
