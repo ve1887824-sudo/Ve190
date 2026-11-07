@@ -129,7 +129,6 @@
         let pendingUpgrade = false;
         let currentTheme = localStorage.getItem('kisa_theme') || 'dark';
         let syncTimer = null;
-        let lastClickTime = 0; // Защита от откатов
 
         const scoreEl = document.getElementById('score');
         const btnClick = document.getElementById('upgrade-click');
@@ -150,7 +149,7 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Безопасный запрос с тайм-аутом (чтобы не зависало, если Render спит)
+        // Безопасный запрос (чтобы не вешало игру, если Render спит)
         async function fetchWithTimeout(url, options, timeout = 5000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
@@ -207,34 +206,27 @@
             pendingUpgrade = false;
 
             try {
-                const r = await fetchWithTimeout(`${API_URL}/api/sync`, {
+                // Отправляем данные на сервер. НЕ ЖДЕМ ответа для обновления экрана.
+                await fetchWithTimeout(`${API_URL}/api/sync`, {
                     method:'POST', 
                     headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
                 }, 5000);
-                
-                const d = await r.json();
-                if (d.coins !== undefined) {
-                    coins = d.coins;
-                    clickPower = d.clickPower;
-                    costClick = 15 * clickPower;
-                    updateUI();
-                }
             } catch(e) {
+                // Если интернет пропал, возвращаем клики обратно в очередь
                 pendingCoins += add;
                 pendingUpgrade = pendingUpgrade || upg;
-                console.warn('sync failed', e);
+                console.warn('sync failed, saved in queue', e);
             }
         }
 
         function scheduleSync() {
             clearTimeout(syncTimer);
-            syncTimer = setTimeout(sync, 800);
+            syncTimer = setTimeout(sync, 1000); // Отправляем пачку кликов раз в секунду
         }
 
-        // === КЛИК ПО КОТУ ===
+        // === КЛИК ===
         document.getElementById('coin-btn').addEventListener('click', () => {
-            lastClickTime = Date.now(); // Запоминаем время клика
             coins += clickPower;
             pendingCoins += clickPower;
             updateUI();
@@ -287,15 +279,12 @@
             document.getElementById('screen-main').classList.remove('active');
         });
 
-        // === ФОНОВАЯ СИНХРОНИЗАЦИЯ (РАЗ В 10 СЕК) ===
+        // === УМНАЯ ФОНОВАЯ ПРОВЕРКА (раз в 10 сек) ===
         setInterval(async () => {
             if (!tg?.initData) return;
             
-            // 1. Если есть несохраненные клики — не трогаем сервер
+            // Если есть неотправленные клики — не мешаем
             if (pendingCoins !== 0 || pendingUpgrade) return;
-            
-            // 2. Если вы кликнули менее 3 секунд назад — ждем (защита от отката)
-            if (Date.now() - lastClickTime < 3000) return;
 
             try {
                 const r = await fetchWithTimeout(`${API_URL}/api/load`, {
@@ -304,8 +293,10 @@
                 }, 5000);
                 const d = await r.json();
                 
-                // 3. Обновляем UI, ТОЛЬКО если сервер прислал БОЛЬШЕ монет (защита от отката)
-                if (d.coins !== undefined && (d.coins > coins || coins === 0)) {
+                // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: 
+                // Обновляем экран ТОЛЬКО если на сервере монет БОЛЬШЕ, чем у нас.
+                // (Это защищает от откатов, если сервер тормозит).
+                if (d.coins !== undefined && d.coins > coins) {
                     coins = d.coins;
                     clickPower = d.clickPower;
                     costClick = 15 * clickPower;
