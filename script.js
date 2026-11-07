@@ -7,10 +7,7 @@ let coins = 0, clickPower = 1, autoClickPower = 0;
 let pendingCoins = 0, pendingUpgrade = false;
 let syncTimer = null, userData = {};
 let currentGame = '', gameChoice = null;
-
-// Бусты
-let buffMultiplier = 1;
-let buffEndTime = 0;
+let buffMultiplier = 1, buffEndTime = 0;
 
 window.switchScreen = function(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -33,31 +30,26 @@ function updateUI() {
     const costPower = 15 + (clickPower * 10);
     const costAuto = 100 + (autoClickPower * 50);
     
-    document.getElementById('btn-up-power').innerText = `Ур. ${clickPower} | ${costPower} 🐾`;
-    document.getElementById('btn-up-power').disabled = coins < costPower;
-    
-    document.getElementById('btn-up-auto').innerText = `Ур. ${autoClickPower} | ${costAuto} 🐾`;
-    document.getElementById('btn-up-auto').disabled = coins < costAuto;
-    
-    document.getElementById('btn-buff').innerText = `Купить за 500 🐾`;
-    document.getElementById('btn-buff').disabled = coins < 500;
+    if(document.getElementById('btn-up-power')) {
+        document.getElementById('btn-up-power').innerText = `Ур. ${clickPower} | ${costPower} 🐾`;
+        document.getElementById('btn-up-power').disabled = coins < costPower;
+        document.getElementById('btn-up-auto').innerText = `Ур. ${autoClickPower} | ${costAuto} 🐾`;
+        document.getElementById('btn-up-auto').disabled = coins < costAuto;
+        document.getElementById('btn-buff').innerText = `Купить за 500 🐾`;
+        document.getElementById('btn-buff').disabled = coins < 500;
+    }
 }
 
 // Автоклик и проверка буста
 setInterval(() => {
     if (autoClickPower > 0) {
         let earn = autoClickPower;
-        coins += earn;
-        pendingCoins += earn;
-        updateUI();
-        scheduleSync();
+        coins += earn; pendingCoins += earn;
+        updateUI(); scheduleSync();
     }
-    
     if (buffEndTime > 0 && Date.now() > buffEndTime) {
-        buffEndTime = 0;
-        buffMultiplier = 1;
+        buffEndTime = 0; buffMultiplier = 1;
         document.getElementById('coin-btn').style.filter = '';
-        alert("🔥 Буст x2 закончился!");
     }
 }, 1000);
 
@@ -66,8 +58,7 @@ async function fetchWithTimeout(url, options, timeout = 5000) {
     const id = setTimeout(() => controller.abort(), timeout);
     try {
         const response = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(id);
-        return response;
+        clearTimeout(id); return response;
     } catch (error) { clearTimeout(id); throw error; }
 }
 
@@ -131,16 +122,14 @@ window.buyUpgrade = function(type) {
     if (type === 'power') {
         let cost = 15 + (clickPower * 10);
         if (coins >= cost) {
-            coins -= cost; clickPower += 1;
-            pendingCoins -= cost; pendingUpgrade = true; 
+            coins -= cost; clickPower += 1; pendingCoins -= cost; pendingUpgrade = true; 
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     } else if (type === 'auto') {
         let cost = 100 + (autoClickPower * 50);
         if (coins >= cost) {
-            coins -= cost; autoClickPower += 1;
-            pendingCoins -= cost;
+            coins -= cost; autoClickPower += 1; pendingCoins -= cost;
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
@@ -150,8 +139,7 @@ window.buyUpgrade = function(type) {
 window.buyBuff = function() {
     if (coins >= 500) {
         coins -= 500; pendingCoins -= 500;
-        buffMultiplier = 2;
-        buffEndTime = Date.now() + 5 * 60 * 1000; 
+        buffMultiplier = 2; buffEndTime = Date.now() + 5 * 60 * 1000; 
         updateUI(); scheduleSync();
         document.getElementById('coin-btn').style.filter = 'drop-shadow(0 0 30px #FF5252)'; 
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -163,113 +151,137 @@ window.buyBuff = function() {
 window.openGame = function(gameType) {
     currentGame = gameType;
     gameChoice = null;
-    const title = document.getElementById('modal-title');
     const ui = document.getElementById('game-ui');
-    document.getElementById('game-modal').classList.add('active');
     document.getElementById('bet-input').value = 10;
     ui.innerHTML = '';
 
+    // Сразу переключаем экран
+    switchScreen('screen-game-play');
+
     if (gameType === 'cups') {
-        title.innerText = "Наперстки";
-        ui.innerHTML = `<p>Выбери стаканчик</p><div class="cups-container">
-            <div class="cup" onclick="selectChoice('cups', 1)">🥥</div>
-            <div class="cup" onclick="selectChoice('cups', 2)">🥥</div>
-            <div class="cup" onclick="selectChoice('cups', 3)">🥥</div></div>`;
+        document.getElementById('game-header-title').innerText = "🥥 Наперстки";
+        ui.innerHTML = `<p>Выбери стаканчик, под которым котик</p>
+            <div class="cups-container">
+                <div class="cup" id="cup-1" onclick="selectChoice('cups', 1)">🥥</div>
+                <div class="cup" id="cup-2" onclick="selectChoice('cups', 2)">🥥</div>
+                <div class="cup" id="cup-3" onclick="selectChoice('cups', 3)">🥥</div>
+            </div>`;
     } else if (gameType === 'dice') {
-        title.innerText = "Кости (Больше 7)";
-        ui.innerHTML = `<p>Выпадет больше 7?</p>
+        document.getElementById('game-header-title').innerText = "🎲 Кости";
+        ui.innerHTML = `<p>Сумма будет больше 7?</p>
             <div class="dice-container">
-                <div class="dice">⚀</div>
-                <div class="dice">⚀</div>
+                <div class="dice">⚀</div><div class="dice">⚀</div>
             </div>
-            <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
-                <button class="btn-primary" style="width: 100px;" onclick="selectChoice('dice', true)">Да</button>
-                <button class="btn-primary" style="width: 100px; background: var(--accent-red);" onclick="selectChoice('dice', false)">Нет</button>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                <button class="guess-btn" id="dice-yes" onclick="selectChoice('dice', true)">Да</button>
+                <button class="guess-btn" id="dice-no" onclick="selectChoice('dice', false)">Нет</button>
             </div>`;
     } else if (gameType === 'coin') {
-        title.innerText = "Монетка";
+        document.getElementById('game-header-title').innerText = "🪙 Монетка";
         ui.innerHTML = `<p>Орел или Решка?</p>
-            <div class="coin-container"><div class="coin" id="coin-anim">🪙</div></div>
-            <div style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
-                <button class="btn-primary" style="width: 100px;" onclick="selectChoice('coin', true)">Орел</button>
-                <button class="btn-primary" style="width: 100px; background: var(--accent-yellow); color: black;" onclick="selectChoice('coin', false)">Решка</button>
+            <div class="coin-container"><div class="coin">🪙</div></div>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                <button class="guess-btn" id="coin-yes" onclick="selectChoice('coin', true)">Орел</button>
+                <button class="guess-btn" id="coin-no" onclick="selectChoice('coin', false)">Решка</button>
             </div>`;
     } else if (gameType === 'slots') {
-        title.innerText = "Слоты";
-        ui.innerHTML = `<p>Испытай удачу!</p>
-            <div class="slots-container" id="slots-anim">
-                <div class="slot-reel">🍒</div>
-                <div class="slot-reel">🍋</div>
-                <div class="slot-reel">💎</div>
+        document.getElementById('game-header-title').innerText = "🎰 Слоты";
+        ui.innerHTML = `<p>Поймай 3 одинаковых (Шанс 15%)</p>
+            <div class="slots-container">
+                <div class="slot-reel" id="reel-1">🍒</div>
+                <div class="slot-reel" id="reel-2">🍋</div>
+                <div class="slot-reel" id="reel-3">💎</div>
             </div>`;
-        gameChoice = true;
+        gameChoice = true; // Выбор не нужен, просто играем
     } else if (gameType === 'wheel') {
-        title.innerText = "Колесо Фортуны";
-        ui.innerHTML = `<p>Испытай удачу!</p>
-            <div class="wheel-container" id="wheel-anim">🎡</div>`;
+        document.getElementById('game-header-title').innerText = "🎡 Колесо";
+        ui.innerHTML = `<p>Испытай удачу (Шанс 20%)</p>
+            <div class="wheel-container" id="wheel">🎡</div>`;
         gameChoice = true;
     } else if (gameType === 'guess') {
-        title.innerText = "Угадай число";
+        document.getElementById('game-header-title').innerText = "🔢 Угадай число";
         ui.innerHTML = `<p>Выбери число от 1 до 10</p>
-            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
-            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="btn-primary" style="width: 50px; height: 50px; padding: 0; margin: 2px;" onclick="selectChoice('guess', ${n})">${n}</button>`).join('')}</div>`;
+            <div class="guess-grid">
+                ${[1,2,3,4,5,6,7,8,9,10].map(n => `<div class="guess-btn" id="guess-${n}" onclick="selectChoice('guess', ${n})">${n}</div>`).join('')}
+            </div>`;
     }
 }
 
-window.closeGame = function() { document.getElementById('game-modal').classList.remove('active'); }
 window.selectChoice = function(game, choice) { 
     gameChoice = choice; 
     if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); 
-    // Визуальный отклик
-    document.querySelectorAll('.cup, .btn-primary').forEach(el => el.style.opacity = '0.5');
-    event.target.style.opacity = '1';
+    
+    // Визуальное выделение выбора
+    if (game === 'cups') {
+        document.querySelectorAll('.cup').forEach(c => c.classList.remove('selected'));
+        document.getElementById('cup-'+choice).classList.add('selected');
+    } else if (game === 'dice') {
+        document.getElementById('dice-yes').classList.toggle('selected', choice === true);
+        document.getElementById('dice-no').classList.toggle('selected', choice === false);
+    } else if (game === 'coin') {
+        document.getElementById('coin-yes').classList.toggle('selected', choice === true);
+        document.getElementById('coin-no').classList.toggle('selected', choice === false);
+    } else if (game === 'guess') {
+        document.querySelectorAll('.guess-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('guess-'+choice).classList.add('selected');
+    }
 }
 
 window.executeGame = async function() {
-    if (!gameChoice) { alert("Сделайте выбор!"); return; }
+    if (!gameChoice) { alert("Сначала сделайте выбор!"); return; }
     const bet = parseInt(document.getElementById('bet-input').value);
     if (isNaN(bet) || bet <= 0 || bet > coins) { alert('Недостаточно монет!'); return; }
 
-    // Анимация
+    // Блокируем кнопку
+    const playBtn = document.getElementById('play-btn');
+    playBtn.disabled = true;
+    playBtn.innerText = "Играем...";
+
+    // Анимации
     if (currentGame === 'dice') {
         document.querySelectorAll('.dice').forEach(d => d.classList.add('rolling'));
     } else if (currentGame === 'coin') {
-        document.getElementById('coin-anim').classList.add('flip');
+        document.querySelector('.coin').classList.add('flip');
     } else if (currentGame === 'slots') {
         document.querySelectorAll('.slot-reel').forEach(r => r.classList.add('spinning'));
     } else if (currentGame === 'wheel') {
-        document.getElementById('wheel-anim').classList.add('spinning');
+        document.getElementById('wheel').classList.add('spinning');
     }
 
-    // Ждем анимацию перед результатом
+    // Ждем завершения анимации (700мс)
     setTimeout(async () => {
         let win = false;
+        let resultMsg = "";
+
         if (currentGame === 'cups') {
-            win = (gameChoice === Math.floor(Math.random() * 3) + 1);
+            const cat = Math.floor(Math.random() * 3) + 1;
+            win = (gameChoice === cat);
+            resultMsg = win ? "Котик был здесь! 😻" : "Пусто... Котик был в другом стаканчике 🐾";
         } else if (currentGame === 'dice') {
             const d1 = Math.ceil(Math.random() * 6);
             const d2 = Math.ceil(Math.random() * 6);
-            const sum = d1 + d2;
-            alert(`Выпало: ${d1} и ${d2} = ${sum}`);
-            win = (gameChoice === (sum > 7));
+            win = (gameChoice === ((d1 + d2) > 7));
+            resultMsg = `Выпало ${d1} и ${d2} (Сумма: ${d1+d2})`;
         } else if (currentGame === 'coin') {
             const isHeads = Math.random() < 0.5;
-            alert(isHeads ? "Выпал Орел!" : "Выпала Решка!");
             win = (gameChoice === isHeads);
+            resultMsg = isHeads ? "Выпал Орел!" : "Выпала Решка!";
         } else if (currentGame === 'slots') {
             win = Math.random() < 0.15;
+            resultMsg = win ? "ДЖЕКПОТ! 🎰" : "Не повезло...";
         } else if (currentGame === 'wheel') {
             win = Math.random() < 0.2;
+            resultMsg = win ? "Колесо остановилось на секторе X2! 🎡" : "Колесо остановилось на пустом секторе.";
         } else if (currentGame === 'guess') {
             const num = Math.floor(Math.random() * 10) + 1;
-            alert(`Выпало число: ${num}`);
             win = (gameChoice === num);
+            resultMsg = `Выпало число: ${num}`;
         }
 
-        closeGame();
-        // Сброс анимаций
+        // Сбрасываем анимации
         document.querySelectorAll('.dice').forEach(d => d.classList.remove('rolling'));
         document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
+        document.getElementById('wheel').classList.remove('spinning');
 
         try {
             const r = await fetchWithTimeout(`${API_URL}/api/game`, {
@@ -286,11 +298,22 @@ window.executeGame = async function() {
                 document.getElementById('stat-wins').innerText = userData.wins;
                 document.getElementById('stat-losses').innerText = userData.losses;
                 updateUI();
-                if (win) { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); alert(`🎉 Победа! +${bet} Kisa!`); }
-                else { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); alert(`😿 Проигрыш. -${bet} Kisa.`); }
+                
+                // Показываем результат
+                if (win) { 
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    alert(`🎉 Победа! ${resultMsg}\n+${bet} Kisa!`); 
+                } else { 
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
+                    alert(`😿 Проигрыш. ${resultMsg}\n-${bet} Kisa.`); 
+                }
             }
         } catch(e) { alert('Ошибка сети'); }
-    }, 600); // 600мс на анимацию
+        
+        // Возвращаем кнопку
+        playBtn.disabled = false;
+        playBtn.innerText = "Играть";
+    }, 700);
 }
 
 // БОНУС И РЕЙТИНГ
@@ -331,7 +354,4 @@ async function loadLeaderboard() {
                 <span class="leader-name">${player.username || 'Игрок'}</span></div>
                 <span class="leader-coins">${player.coins} 🐾</span></div>`;
         });
-    } catch(e) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Ошибка загрузки</div>'; }
-}
-
-loadProgress();
+    } catch(e) { container.innerHTML = '<div style="text-align: center; color: var
