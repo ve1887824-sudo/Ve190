@@ -9,13 +9,15 @@
 </head>
 <body>
 
-    <!-- ГЛАВНЫЙ ЭКРАН -->
     <div class="screen active" id="screen-main">
         <div class="header">
             <div class="logo"><div class="logo-icon">🐱</div> KisaGame</div>
             <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
         </div>
         <div class="clicker-area">
+            <!-- Таймер буста -->
+            <div id="buff-timer" class="buff-timer hidden">🔥 x2: <span id="buff-time">0:00</span></div>
+            
             <div class="huge-balance"><span id="balance-main">0</span></div>
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
@@ -26,30 +28,26 @@
         </div>
     </div>
 
-    <!-- ЭКРАН СПИСКА ИГР -->
+    <!-- ОСТАЛЬНОЙ HTML БЕЗ ИЗМЕНЕНИЙ, ОН У ВАС ЕСТЬ -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
-        <div class="game-list">
-            <div class="game-item" onclick="openGame('cups')"><div class="game-icon">🥥</div><div class="game-title">Наперстки</div></div>
-            <div class="game-item" onclick="openGame('dice')"><div class="game-icon">🎲</div><div class="game-title">Кости (Больше 7)</div></div>
-            <div class="game-item" onclick="openGame('coin')"><div class="game-icon">🪙</div><div class="game-title">Монетка (Орел/Решка)</div></div>
-            <div class="game-item" onclick="openGame('slots')"><div class="game-icon">🎰</div><div class="game-title">Слоты</div></div>
-            <div class="game-item" onclick="openGame('wheel')"><div class="game-icon">🎡</div><div class="game-title">Колесо Фортуны</div></div>
-            <div class="game-item" onclick="openGame('guess')"><div class="game-icon">🔢</div><div class="game-title">Угадай число (1-10)</div></div>
+        <div class="game-grid">
+            <div class="game-card" onclick="openGame('cups')"><div class="game-card-icon">🥥</div><div class="game-card-title">Наперстки</div></div>
+            <div class="game-card" onclick="openGame('dice')"><div class="game-card-icon">🎲</div><div class="game-card-title">Кости</div></div>
+            <div class="game-card" onclick="openGame('coin')"><div class="game-card-icon">🪙</div><div class="game-card-title">Монетка</div></div>
+            <div class="game-card" onclick="openGame('slots')"><div class="game-card-icon">🎰</div><div class="game-card-title">Слоты</div></div>
+            <div class="game-card" onclick="openGame('wheel')"><div class="game-card-icon">🎡</div><div class="game-card-title">Колесо</div></div>
+            <div class="game-card" onclick="openGame('guess')"><div class="game-card-icon">🔢</div><div class="game-card-title">Угадай число</div></div>
         </div>
     </div>
 
-    <!-- ЭКРАН САМОЙ ИГРЫ (ОТКРЫВАЕТСЯ КАК ВКЛАДКА) -->
     <div class="screen" id="screen-game-play">
         <div class="header" style="justify-content: flex-start; gap: 15px;">
             <button class="back-btn" onclick="switchScreen('screen-games')">‹</button>
             <div class="logo" id="game-header-title">Игра</div>
         </div>
-        
         <div class="game-play-area">
-            <!-- Сюда JS будет вставлять уникальный интерфейс и анимации игры -->
             <div id="game-ui" class="game-ui-container"></div>
-
             <div class="game-controls">
                 <input type="number" id="bet-input" class="bet-input" value="10" min="1">
                 <button class="btn-primary" id="play-btn" onclick="executeGame()">Играть</button>
@@ -57,7 +55,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО МАГАЗИНА -->
     <div class="game-modal" id="shop-modal">
         <div class="modal-content">
             <div class="close-modal" onclick="closeShop()">✕</div>
@@ -83,7 +80,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН БОНУСА -->
     <div class="screen" id="screen-bonus">
         <div class="header"><div class="logo">🎁 Бонус</div></div>
         <div class="bonus-card">
@@ -95,7 +91,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН ПРОФИЛЯ -->
     <div class="screen" id="screen-profile">
         <div class="profile-header"><span>Профиль</span></div>
         <div class="user-card">
@@ -126,15 +121,11 @@
         </div>
     </div>
 
-    <!-- ЭКРАН РЕЙТИНГА -->
     <div class="screen" id="screen-leaderboard">
         <div class="header"><div class="logo">🏆 Топ-10 игроков</div></div>
-        <div class="leaderboard-list" id="leaderboard-container">
-            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Загрузка...</div>
-        </div>
+        <div class="leaderboard-list" id="leaderboard-container"></div>
     </div>
 
-    <!-- НАВИГАЦИЯ -->
     <nav class="bottom-nav">
         <button class="nav-item active" id="nav-main" onclick="switchScreen('screen-main')"><span class="nav-icon">🏠</span><span>Главная</span></button>
         <button class="nav-item" id="nav-games" onclick="switchScreen('screen-games')"><span class="nav-icon">🎮</span><span>Игры</span></button>
