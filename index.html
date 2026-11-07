@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame - Профессиональный кликер</title>
+    <title>KisaGame - Финал</title>
     <!-- Подключаем скрипт Telegram -->
     <script src="https://telegram.org"></script>
-    <!-- Подключаем официальную библиотеку Supabase -->
+    <!-- Подключаем библиотеку Supabase через CDN -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body {
@@ -51,10 +51,21 @@
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
-        // Интеграция вашей личной базы данных Supabase
+        // Ваша база данных
         const SUPABASE_URL = "https://supabase.co"; 
         const SUPABASE_KEY = "sb_publishable_GtVnaoI6QiSyj8U9X4UWdw_cx29rxUf";
-        const supabase = typeof supabasejs !== 'undefined' ? supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        
+        // Сверхнадежное подключение к библиотеке
+        let supabase = null;
+        try {
+            if (typeof supabasejs !== 'undefined') {
+                supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+            } else if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) {
+            console.error("Ошибка инициализации клиента:", e);
+        }
 
         // Переменные игрока
         let userId = "guest_test_id"; 
@@ -67,63 +78,66 @@
         const dbStatusEl = document.getElementById('db-status');
         const greetingEl = document.getElementById('user-greeting');
 
-        // Получаем ID пользователя из Telegram
         if (tg && tg.initDataUnsafe?.user) {
             userId = tg.initDataUnsafe.user.id.toString();
             greetingEl.innerText = `Игрок: ${tg.initDataUnsafe.user.first_name}`;
         }
 
-        // Авторизация и загрузка прогресса при входе
+        // Загрузка аккаунта
         async function initAccount() {
             if (!supabase) {
                 dbStatusEl.innerText = "Ошибка конфигурации базы. ❌";
                 return;
             }
 
-            // Запрашиваем данные из вашей таблицы Kis
-            let { data, error } = await supabase.from('Kis').select('*').eq('tg_id', userId).maybeSingle();
+            try {
+                let { data, error } = await supabase.from('Kis').select('*').eq('tg_id', userId).maybeSingle();
 
-            if (error) {
-                dbStatusEl.innerText = "Ошибка подключения к сети. ❌";
-                console.error(error);
-                return;
-            }
-
-            if (data) {
-                // Если игрок найден — загружаем его прогресс
-                coins = parseInt(data.coins) || 0;
-                clickPower = parseInt(data.click_power) || 1;
-                costClick = 15 * clickPower;
-                dbStatusEl.innerText = "Профиль успешно загружен! ✅";
-            } else {
-                // Если игрока еще нет в базе — автоматически регистрируем его
-                dbStatusEl.innerText = "Создаем профиль в базе данных...";
-                let { error: insertError } = await supabase.from('Kis').insert([{ tg_id: userId, coins: 0, click_power: 1 }]);
-                if (!insertError) {
-                    dbStatusEl.innerText = "Новый аккаунт успешно создан! 🎉";
-                } else {
-                    console.error(insertError);
+                if (error) {
+                    dbStatusEl.innerText = "Ошибка сети при загрузке. ❌";
+                    return;
                 }
+
+                if (data) {
+                    coins = parseInt(data.coins) || 0;
+                    clickPower = parseInt(data.click_power) || 1;
+                    costClick = 15 * clickPower;
+                    dbStatusEl.innerText = "Профиль успешно загружен! ✅";
+                } else {
+                    dbStatusEl.innerText = "Создаем профиль в базе данных...";
+                    let { error: insertError } = await supabase.from('Kis').insert([{ tg_id: userId, coins: 0, click_power: 1 }]);
+                    if (!insertError) {
+                        dbStatusEl.innerText = "Новый аккаунт успешно создан! 🎉";
+                    } else {
+                        dbStatusEl.innerText = "Ошибка создания аккаунта. ❌";
+                    }
+                }
+            } catch (err) {
+                dbStatusEl.innerText = "Ошибка базы данных. ❌";
             }
             updateUI();
         }
 
-        // Сохранение текущего баланса в Supabase
+        // Сохранение баланса
         async function saveBalance() {
             if (supabase) {
-                await supabase.from('Kis').update({ coins: coins, click_power: clickPower }).eq('tg_id', userId);
+                try {
+                    await supabase.from('Kis').update({ coins: coins, click_power: clickPower }).eq('tg_id', userId);
+                } catch (e) {
+                    console.error("Ошибка сохранения баланса:", e);
+                }
             }
         }
 
-        // Логика нажатия по котику
+        // Клик
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             updateUI();
-            saveBalance(); // Отправляем данные в базу данных
+            saveBalance();
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
-        // Покупка апгрейда
+        // Прокачка
         btnClick.addEventListener('click', () => {
             if (coins >= costClick) {
                 coins -= costClick;
@@ -141,7 +155,7 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Старт игры
+        // Старт системы
         initAccount();
     </script>
 </body>
