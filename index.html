@@ -5,91 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KisaGame</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        :root {
-            --bg-main: #0B0E14; --bg-card: #151A25; --text-main: #FFFFFF; --text-muted: #8B94A6;
-            --accent-blue: #00D1FF; --accent-purple: #9D50FF; --accent-green: #00E676; --accent-red: #FF5252; --accent-yellow: #FFD700;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-main); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
-        
-        .screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; padding-bottom: 80px; }
-        .screen.active { display: flex; }
-
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(21, 26, 37, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; }
-        .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
-        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #00D1FF, #0055FF); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 16px; }
-        .balance-pill { display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(0, 209, 255, 0.3); font-weight: 600; font-size: 14px; color: var(--accent-blue); }
-
-        .clicker-area { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin-top: 10px; }
-        .huge-balance { font-size: 56px; font-weight: 700; color: var(--accent-blue); text-shadow: 0 0 20px rgba(0, 209, 255, 0.4); margin-bottom: 5px; }
-        .click-btn { font-size: 140px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; filter: drop-shadow(0 0 30px rgba(0, 209, 255, 0.3)); margin-bottom: 20px; }
-        .click-btn:active { transform: scale(0.9); }
-        
-        .upgrade-btn { padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--accent-purple); border-radius: 16px; color: white; font-weight: 600; font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: calc(100% - 40px); max-width: 320px; outline: none; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(157, 80, 255, 0.2); }
-        .upgrade-btn:disabled { opacity: 0.5; border-color: var(--text-muted); box-shadow: none; }
-
-        .profile-header { display: flex; align-items: center; gap: 10px; padding: 20px; font-size: 20px; font-weight: 600; }
-        .user-card { background: var(--bg-card); border-radius: 24px; margin: 0 20px; padding: 20px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.05); }
-        .avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-blue); background: #000; }
-        .user-info h3 { font-size: 18px; margin-bottom: 4px; }
-        .user-info p { font-size: 13px; color: var(--text-muted); }
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px; }
-        .stat-box { background: var(--bg-card); border-radius: 16px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,0.02); }
-        .stat-value { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-        .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-        .c-blue { color: var(--accent-blue); } .c-green { color: var(--accent-green); } .c-red { color: var(--accent-red); } .c-yellow { color: var(--accent-yellow); }
-        .details-list { margin: 0 20px; background: var(--bg-card); border-radius: 24px; padding: 20px; }
-        .detail-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-row span:first-child { color: var(--text-muted); }
-        .detail-row span:last-child { font-weight: 500; }
-        .badges { display: flex; gap: 8px; }
-        .badge { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
-        .badge-active { background: rgba(0, 230, 118, 0.2); color: var(--accent-green); }
-        .badge-admin { background: rgba(0, 209, 255, 0.2); color: var(--accent-blue); }
-
-        .game-list { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .game-item { background: var(--bg-card); border-radius: 20px; padding: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
-        .game-item:active { background: var(--bg-card-hover); }
-        .game-icon { font-size: 40px; }
-        .game-title { font-weight: 600; font-size: 16px; flex: 1; margin-left: 15px; }
-        
-        .game-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .game-modal.active { display: flex; }
-        .modal-content { background: var(--bg-card); border-radius: 24px; padding: 30px 20px; width: 100%; max-width: 360px; text-align: center; position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: var(--text-muted); }
-        .bet-input { width: 100%; padding: 15px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 16px; text-align: center; margin-bottom: 15px; outline: none; }
-        
-        .cups-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .cup { font-size: 50px; cursor: pointer; transition: transform 0.2s; }
-        .cup:active { transform: scale(0.9); }
-        
-        .bonus-card { margin: 20px; background: var(--bg-card); border-radius: 24px; padding: 30px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .gift-icon { font-size: 80px; margin-bottom: 20px; animation: float 2s ease-in-out infinite; }
-        @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
-
-        .leaderboard-list { margin: 20px; background: var(--bg-card); border-radius: 24px; padding: 10px 20px; }
-        .leader-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .leader-row:last-child { border-bottom: none; }
-        .leader-left { display: flex; align-items: center; gap: 15px; }
-        .leader-rank { font-weight: 700; font-size: 16px; width: 25px; color: var(--text-muted); }
-        .leader-avatar { width: 40px; height: 40px; border-radius: 50%; background: #000; }
-        .leader-name { font-weight: 600; font-size: 14px; }
-        .leader-coins { font-weight: 700; color: var(--accent-yellow); }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: rgba(11, 14, 20, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-around; align-items: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 10px; font-weight: 500; gap: 4px; outline: none; }
-        .nav-item.active { color: var(--accent-blue); }
-        .nav-icon { font-size: 22px; }
-        .hidden { display: none !important; }
-        .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent-blue), #0055FF); border-radius: 16px; border: none; color: white; font-weight: 600; font-size: 16px; cursor: pointer; outline: none; }
-        .btn-primary:disabled { background: var(--text-muted); opacity: 0.5; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- ГЛАВНЫЙ ЭКРАН -->
     <div class="screen active" id="screen-main">
         <div class="header">
             <div class="logo"><div class="logo-icon">🐱</div> KisaGame</div>
@@ -99,13 +19,15 @@
             <div class="huge-balance"><span id="balance-main">0</span></div>
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
-            <button class="upgrade-btn" id="upgrade-btn" disabled>
-                <span id="upgrade-text">⚡ Улучшить клик (Ур. 1)</span>
-                <span id="upgrade-cost">15 🐾</span>
+            
+            <!-- Заменили кнопку улучшения -->
+            <button class="upgrade-btn" onclick="openShop()" style="justify-content: center; border-color: var(--accent-blue); box-shadow: 0 4px 15px rgba(0, 209, 255, 0.2);">
+                <span>🛒 Магазин улучшений</span>
             </button>
         </div>
     </div>
 
+    <!-- ЭКРАН ИГРЫ -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
         <div class="game-list">
@@ -118,16 +40,59 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО ИГР -->
     <div class="game-modal" id="game-modal">
         <div class="modal-content">
             <div class="close-modal" onclick="closeGame()">✕</div>
             <h2 id="modal-title">Игра</h2>
-            <div id="game-ui" style="margin-top: 20px;"></div>
-            <input type="number" id="bet-input" class="bet-input" value="10" min="1" style="margin-top: 15px;">
+            
+            <div id="game-ui" class="game-ui-container">
+                <!-- Сюда JS будет вставлять анимации и кнопки -->
+            </div>
+
+            <input type="number" id="bet-input" class="bet-input" value="10" min="1">
             <button class="btn-primary" id="play-btn" onclick="executeGame()">Играть</button>
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО МАГАЗИНА -->
+    <div class="game-modal" id="shop-modal">
+        <div class="modal-content">
+            <div class="close-modal" onclick="closeShop()">✕</div>
+            <h2>🛒 Магазин</h2>
+            
+            <div class="shop-section">
+                <h3>Постоянные улучшения</h3>
+                <div class="shop-item">
+                    <div>
+                        <div class="shop-title">⚡ Сила клика</div>
+                        <div class="shop-desc">Увеличивает доход за 1 клик</div>
+                    </div>
+                    <button class="btn-shop" id="btn-up-power" onclick="buyUpgrade('power')">Купить</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <div class="shop-title">🤖 Автоклик</div>
+                        <div class="shop-desc">Пассивный доход в секунду</div>
+                    </div>
+                    <button class="btn-shop" id="btn-up-auto" onclick="buyUpgrade('auto')">Купить</button>
+                </div>
+            </div>
+
+            <div class="shop-section">
+                <h3>Временные бусты</h3>
+                <div class="shop-item">
+                    <div>
+                        <div class="shop-title">🔥 x2 К клику</div>
+                        <div class="shop-desc">Удваивает силу клика на 5 минут</div>
+                    </div>
+                    <button class="btn-shop" id="btn-buff" onclick="buyBuff()">Купить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН БОНУСА -->
     <div class="screen" id="screen-bonus">
         <div class="header"><div class="logo">🎁 Бонус</div></div>
         <div class="bonus-card">
@@ -139,6 +104,7 @@
         </div>
     </div>
 
+    <!-- ЭКРАН ПРОФИЛЯ -->
     <div class="screen" id="screen-profile">
         <div class="profile-header"><span>Профиль</span></div>
         <div class="user-card">
@@ -169,6 +135,7 @@
         </div>
     </div>
 
+    <!-- ЭКРАН РЕЙТИНГА -->
     <div class="screen" id="screen-leaderboard">
         <div class="header"><div class="logo">🏆 Топ-10 игроков</div></div>
         <div class="leaderboard-list" id="leaderboard-container">
@@ -176,6 +143,7 @@
         </div>
     </div>
 
+    <!-- НАВИГАЦИЯ -->
     <nav class="bottom-nav">
         <button class="nav-item active" id="nav-main" onclick="switchScreen('screen-main')"><span class="nav-icon">🏠</span><span>Главная</span></button>
         <button class="nav-item" id="nav-games" onclick="switchScreen('screen-games')"><span class="nav-icon">🎮</span><span>Игры</span></button>
@@ -183,242 +151,7 @@
         <button class="nav-item" id="nav-profile" onclick="switchScreen('screen-profile')"><span class="nav-icon">👤</span><span>Профиль</span></button>
         <button class="nav-item" id="nav-leader" onclick="switchScreen('screen-leaderboard')"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
     </nav>
-        <script>
-        const API_URL = 'https://ve190-9.onrender.com'; 
-        const ADMIN_ID = "5372048108"; 
-        const tg = window.Telegram?.WebApp;
-        if (tg) { tg.expand(); tg.ready(); }
 
-        let coins = 0, clickPower = 1, costClick = 15;
-        let pendingCoins = 0, pendingUpgrade = false;
-        let syncTimer = null, userData = {};
-        let currentGame = '', gameChoice = null;
-
-        window.switchScreen = function(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
-            if (screenId === 'screen-main') document.getElementById('nav-main').classList.add('active');
-            if (screenId === 'screen-games') document.getElementById('nav-games').classList.add('active');
-            if (screenId === 'screen-bonus') { document.getElementById('nav-bonus').classList.add('active'); checkBonusStatus(); }
-            if (screenId === 'screen-profile') document.getElementById('nav-profile').classList.add('active');
-            if (screenId === 'screen-leaderboard') { document.getElementById('nav-leader').classList.add('active'); loadLeaderboard(); }
-        }
-
-        function updateUI() {
-            document.getElementById('balance-header').innerText = coins;
-            document.getElementById('balance-main').innerText = coins;
-            document.getElementById('stat-balance').innerText = coins;
-            document.getElementById('detail-balance').innerText = coins + ' Kisa';
-            
-            const btn = document.getElementById('upgrade-btn');
-            document.getElementById('upgrade-text').innerText = `⚡ Улучшить клик (Ур. ${clickPower})`;
-            document.getElementById('upgrade-cost').innerText = costClick + ' 🐾';
-            btn.disabled = coins < costClick;
-        }
-
-        async function fetchWithTimeout(url, options, timeout = 5000) {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-            try {
-                const response = await fetch(url, { ...options, signal: controller.signal });
-                clearTimeout(id);
-                return response;
-            } catch (error) { clearTimeout(id); throw error; }
-        }
-
-        async function loadProgress() {
-            if (!tg?.initData) return;
-            try {
-                const r = await fetchWithTimeout(`${API_URL}/api/load`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ initData: tg.initData })
-                });
-                userData = await r.json();
-                coins = userData.coins ?? 0;
-                clickPower = userData.clickPower ?? 1;
-                costClick = 15 * clickPower;
-
-                document.getElementById('user-name').innerText = userData.username || "Игрок";
-                document.getElementById('user-username').innerText = userData.username || "username";
-                document.getElementById('user-id').innerText = userData.user_id;
-                document.getElementById('detail-id').innerText = userData.user_id;
-                document.getElementById('user-avatar').src = userData.photo_url || "https://ui-avatars.com/api/?name=K&background=00D1FF&color=fff";
-                document.getElementById('stat-games').innerText = userData.games_played || 0;
-                document.getElementById('stat-wins').innerText = userData.wins || 0;
-                document.getElementById('stat-losses').innerText = userData.losses || 0;
-
-                if (String(userData.user_id) === String(ADMIN_ID)) {
-                    document.getElementById('admin-badge').classList.remove('hidden');
-                }
-            } catch(e) { console.warn('Ошибка загрузки', e); }
-            updateUI();
-        }
-
-        async function sync() {
-            if (!tg?.initData || (pendingCoins === 0 && !pendingUpgrade)) return;
-            const add = pendingCoins, upg = pendingUpgrade;
-            pendingCoins = 0; pendingUpgrade = false;
-            try {
-                await fetchWithTimeout(`${API_URL}/api/sync`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
-                });
-            } catch(e) { pendingCoins += add; pendingUpgrade = pendingUpgrade || upg; }
-        }
-
-        function scheduleSync() {
-            clearTimeout(syncTimer);
-            syncTimer = setTimeout(sync, 1000);
-        }
-
-        document.getElementById('coin-btn').addEventListener('click', () => {
-            coins += clickPower; pendingCoins += clickPower;
-            updateUI(); scheduleSync();
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        });
-
-        document.getElementById('upgrade-btn').addEventListener('click', () => {
-            if (coins >= costClick) {
-                coins -= costClick; clickPower += 1; costClick = 15 * clickPower;
-                pendingCoins -= costClick; pendingUpgrade = true;
-                updateUI(); scheduleSync();
-                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            }
-        });
-
-        window.openGame = function(gameType) {
-            currentGame = gameType;
-            gameChoice = null;
-            const title = document.getElementById('modal-title');
-            const ui = document.getElementById('game-ui');
-            document.getElementById('game-modal').classList.add('active');
-            document.getElementById('bet-input').value = 10;
-
-            if (gameType === 'cups') {
-                title.innerText = "Наперстки";
-                ui.innerHTML = `<p>Выбери стаканчик</p><div class="cups-container">
-                    <div class="cup" onclick="selectChoice('cups', 1)">🥥</div>
-                    <div class="cup" onclick="selectChoice('cups', 2)">🥥</div>
-                    <div class="cup" onclick="selectChoice('cups', 3)">🥥</div></div>`;
-            } else if (gameType === 'dice') {
-                title.innerText = "Кости (Больше 7)";
-                ui.innerHTML = `<p>Выпадет больше 7?</p><div>
-                    <button class="btn-primary" style="width: 100px; margin: 5px;" onclick="selectChoice('dice', true)">Да</button>
-                    <button class="btn-primary" style="width: 100px; margin: 5px; background: var(--accent-red);" onclick="selectChoice('dice', false)">Нет</button></div>`;
-            } else if (gameType === 'coin') {
-                title.innerText = "Монетка";
-                ui.innerHTML = `<p>Орел или Решка?</p><div>
-                    <button class="btn-primary" style="width: 100px; margin: 5px;" onclick="selectChoice('coin', true)">Орел</button>
-                    <button class="btn-primary" style="width: 100px; margin: 5px; background: var(--accent-yellow); color: black;" onclick="selectChoice('coin', false)">Решка</button></div>`;
-            } else if (gameType === 'slots') {
-                title.innerText = "Слоты";
-                ui.innerHTML = `<p>Испытай удачу (Шанс 15%)</p><div class="card-game" style="font-size: 40px;">🎰</div>`;
-                gameChoice = true;
-            } else if (gameType === 'wheel') {
-                title.innerText = "Колесо Фортуны";
-                ui.innerHTML = `<p>Испытай удачу (Шанс 20%)</p><div class="card-game" style="font-size: 40px;">🎡</div>`;
-                gameChoice = true;
-            } else if (gameType === 'guess') {
-                title.innerText = "Угадай число";
-                ui.innerHTML = `<p>Выбери число от 1 до 10</p><div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
-                    ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="btn-primary" style="width: 40px; height: 40px; padding: 0; margin: 2px;" onclick="selectChoice('guess', ${n})">${n}</button>`).join('')}</div>`;
-            }
-        }
-
-        window.closeGame = function() { document.getElementById('game-modal').classList.remove('active'); }
-        window.selectChoice = function(game, choice) { gameChoice = choice; if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); }
-
-        window.executeGame = async function() {
-            if (!gameChoice) { alert("Сделайте выбор!"); return; }
-            const bet = parseInt(document.getElementById('bet-input').value);
-            if (isNaN(bet) || bet <= 0 || bet > coins) { alert('Недостаточно монет!'); return; }
-
-            let win = false;
-            if (currentGame === 'cups') {
-                win = (gameChoice === Math.floor(Math.random() * 3) + 1);
-            } else if (currentGame === 'dice') {
-                const sum = Math.ceil(Math.random() * 6) + Math.ceil(Math.random() * 6);
-                alert(`Выпало: ${sum}`);
-                win = (gameChoice === (sum > 7));
-            } else if (currentGame === 'coin') {
-                const isHeads = Math.random() < 0.5;
-                alert(isHeads ? "Выпал Орел!" : "Выпала Решка!");
-                win = (gameChoice === isHeads);
-            } else if (currentGame === 'slots') {
-                win = Math.random() < 0.15;
-            } else if (currentGame === 'wheel') {
-                win = Math.random() < 0.2;
-            } else if (currentGame === 'guess') {
-                const num = Math.floor(Math.random() * 10) + 1;
-                alert(`Выпало число: ${num}`);
-                win = (gameChoice === num);
-            }
-
-            closeGame();
-            try {
-                const r = await fetchWithTimeout(`${API_URL}/api/game`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ initData: tg.initData, bet: bet, win: win })
-                });
-                const d = await r.json();
-                if (d.coins !== undefined) {
-                    coins = d.coins;
-                    userData.games_played = (userData.games_played || 0) + 1;
-                    if (win) userData.wins = (userData.wins || 0) + 1; else userData.losses = (userData.losses || 0) + 1;
-                    
-                    document.getElementById('stat-games').innerText = userData.games_played;
-                    document.getElementById('stat-wins').innerText = userData.wins;
-                    document.getElementById('stat-losses').innerText = userData.losses;
-                    updateUI();
-                    if (win) { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); alert(`🎉 Победа! +${bet} Kisa!`); }
-                    else { if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); alert(`😿 Проигрыш. -${bet} Kisa.`); }
-                }
-            } catch(e) { alert('Ошибка сети'); }
-        }
-
-        function checkBonusStatus() {
-            const btn = document.getElementById('claim-bonus-btn');
-            const timer = document.getElementById('bonus-timer');
-            if (!userData.last_bonus) { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; return; }
-            const diff = 86400000 - (new Date().getTime() - new Date(userData.last_bonus).getTime());
-            if (diff > 0) {
-                btn.disabled = true;
-                timer.innerText = `Доступно через: ${Math.floor(diff / 3600000)}ч ${Math.floor((diff % 3600000) / 60000)}м`;
-                btn.innerText = "Уже получено";
-            } else { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; }
-        }
-
-        document.getElementById('claim-bonus-btn').addEventListener('click', async () => {
-            try {
-                const r = await fetchWithTimeout(`${API_URL}/api/bonus`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
-                if (r.ok) {
-                    const d = await r.json();
-                    coins = d.coins; userData.last_bonus = new Date().toISOString();
-                    updateUI(); checkBonusStatus(); alert(`🎁 Вы получили ${d.amount} Kisa!`);
-                }
-            } catch(e) { alert('Ошибка'); }
-        });
-
-        async function loadLeaderboard() {
-            const container = document.getElementById('leaderboard-container');
-            try {
-                const r = await fetchWithTimeout(`${API_URL}/api/leaderboard`, { method: 'GET' });
-                const data = await r.json();
-                container.innerHTML = '';
-                if (data.length === 0) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Пока нет игроков</div>'; return; }
-                data.forEach((player, index) => {
-                    container.innerHTML += `<div class="leader-row"><div class="leader-left">
-                        <span class="leader-rank">${index + 1}</span>
-                        <img class="leader-avatar" src="${player.photo_url || 'https://ui-avatars.com/api/?name='+(player.username||'U')+'&background=00D1FF&color=fff'}">
-                        <span class="leader-name">${player.username || 'Игрок'}</span></div>
-                        <span class="leader-coins">${player.coins} 🐾</span></div>`;
-                });
-            } catch(e) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Ошибка загрузки</div>'; }
-        }
-
-        loadProgress();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
