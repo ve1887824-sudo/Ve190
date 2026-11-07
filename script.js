@@ -173,4 +173,172 @@ window.openGame = function(gameType) {
                 <button class="guess-btn" id="dice-no" onclick="selectChoice('dice', false)">Нет</button>
             </div>`;
     } else if (gameType === 'coin') {
-        document.getElementById('game-header-title').innerText = "
+        document.getElementById('game-header-title').innerText = "🪙 Монетка";
+        ui.innerHTML = `<p>Орел или Решка?</p>
+            <div class="coin-container"><div class="coin">🪙</div></div>
+            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+                <button class="guess-btn" id="coin-yes" onclick="selectChoice('coin', true)">Орел</button>
+                <button class="guess-btn" id="coin-no" onclick="selectChoice('coin', false)">Решка</button>
+            </div>`;
+    } else if (gameType === 'slots') {
+        document.getElementById('game-header-title').innerText = "🎰 Слоты";
+        ui.innerHTML = `<p>Поймай 3 одинаковых (Шанс 15%)</p>
+            <div class="slots-container">
+                <div class="slot-reel" id="reel-1">🍒</div>
+                <div class="slot-reel" id="reel-2">🍋</div>
+                <div class="slot-reel" id="reel-3">💎</div>
+            </div>`;
+        gameChoice = true;
+    } else if (gameType === 'wheel') {
+        document.getElementById('game-header-title').innerText = "🎡 Колесо";
+        ui.innerHTML = `<p>Испытай удачу (Шанс 20%)</p>
+            <div class="wheel-container" id="wheel">🎡</div>`;
+        gameChoice = true;
+    } else if (gameType === 'guess') {
+        document.getElementById('game-header-title').innerText = "🔢 Угадай число";
+        ui.innerHTML = `<p>Выбери число от 1 до 10</p>
+            <div class="guess-grid">
+                ${[1,2,3,4,5,6,7,8,9,10].map(n => `<div class="guess-btn" id="guess-${n}" onclick="selectChoice('guess', ${n})">${n}</div>`).join('')}
+            </div>`;
+    }
+}
+
+window.selectChoice = function(game, choice) { 
+    gameChoice = choice; 
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); 
+    
+    if (game === 'cups') {
+        document.querySelectorAll('.cup').forEach(c => c.classList.remove('selected'));
+        document.getElementById('cup-'+choice).classList.add('selected');
+    } else if (game === 'dice') {
+        document.getElementById('dice-yes').classList.toggle('selected', choice === true);
+        document.getElementById('dice-no').classList.toggle('selected', choice === false);
+    } else if (game === 'coin') {
+        document.getElementById('coin-yes').classList.toggle('selected', choice === true);
+        document.getElementById('coin-no').classList.toggle('selected', choice === false);
+    } else if (game === 'guess') {
+        document.querySelectorAll('.guess-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('guess-'+choice).classList.add('selected');
+    }
+}
+
+// --- ЧАСТЬ 2 БУДЕТ НИЖЕ ---
+window.executeGame = async function() {
+    if (!gameChoice) { alert("Сначала сделайте выбор!"); return; }
+    const bet = parseInt(document.getElementById('bet-input').value);
+    if (isNaN(bet) || bet <= 0 || bet > coins) { alert('Недостаточно монет!'); return; }
+
+    const playBtn = document.getElementById('play-btn');
+    playBtn.disabled = true;
+    playBtn.innerText = "Играем...";
+
+    if (currentGame === 'dice') document.querySelectorAll('.dice').forEach(d => d.classList.add('rolling'));
+    else if (currentGame === 'coin') document.querySelector('.coin').classList.add('flip');
+    else if (currentGame === 'slots') document.querySelectorAll('.slot-reel').forEach(r => r.classList.add('spinning'));
+    else if (currentGame === 'wheel') document.getElementById('wheel').classList.add('spinning');
+
+    setTimeout(async () => {
+        let win = false;
+        let resultMsg = "";
+
+        if (currentGame === 'cups') {
+            const cat = Math.floor(Math.random() * 3) + 1;
+            win = (gameChoice === cat);
+            resultMsg = win ? "Котик был здесь! 😻" : "Пусто... Котик был в другом стаканчике 🐾";
+        } else if (currentGame === 'dice') {
+            const d1 = Math.ceil(Math.random() * 6);
+            const d2 = Math.ceil(Math.random() * 6);
+            win = (gameChoice === ((d1 + d2) > 7));
+            resultMsg = `Выпало ${d1} и ${d2} (Сумма: ${d1+d2})`;
+        } else if (currentGame === 'coin') {
+            const isHeads = Math.random() < 0.5;
+            win = (gameChoice === isHeads);
+            resultMsg = isHeads ? "Выпал Орел!" : "Выпала Решка!";
+        } else if (currentGame === 'slots') {
+            win = Math.random() < 0.15;
+            resultMsg = win ? "ДЖЕКПОТ! 🎰" : "Не повезло...";
+        } else if (currentGame === 'wheel') {
+            win = Math.random() < 0.2;
+            resultMsg = win ? "Колесо остановилось на секторе X2! 🎡" : "Колесо остановилось на пустом секторе.";
+        } else if (currentGame === 'guess') {
+            const num = Math.floor(Math.random() * 10) + 1;
+            win = (gameChoice === num);
+            resultMsg = `Выпало число: ${num}`;
+        }
+
+        document.querySelectorAll('.dice').forEach(d => d.classList.remove('rolling'));
+        document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
+        if(document.getElementById('wheel')) document.getElementById('wheel').classList.remove('spinning');
+
+        try {
+            const r = await fetchWithTimeout(`${API_URL}/api/game`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ initData: tg.initData, bet: bet, win: win })
+            });
+            const d = await r.json();
+            if (d.coins !== undefined) {
+                coins = d.coins;
+                userData.games_played = (userData.games_played || 0) + 1;
+                if (win) userData.wins = (userData.wins || 0) + 1; else userData.losses = (userData.losses || 0) + 1;
+                
+                document.getElementById('stat-games').innerText = userData.games_played;
+                document.getElementById('stat-wins').innerText = userData.wins;
+                document.getElementById('stat-losses').innerText = userData.losses;
+                updateUI();
+                
+                if (win) { 
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    alert(`🎉 Победа! ${resultMsg}\n+${bet} Kisa!`); 
+                } else { 
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
+                    alert(`😿 Проигрыш. ${resultMsg}\n-${bet} Kisa.`); 
+                }
+            }
+        } catch(e) { alert('Ошибка сети'); }
+        
+        playBtn.disabled = false;
+        playBtn.innerText = "Играть";
+    }, 700);
+}
+
+function checkBonusStatus() {
+    const btn = document.getElementById('claim-bonus-btn');
+    const timer = document.getElementById('bonus-timer');
+    if (!userData.last_bonus) { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; return; }
+    const diff = 86400000 - (new Date().getTime() - new Date(userData.last_bonus).getTime());
+    if (diff > 0) {
+        btn.disabled = true;
+        timer.innerText = `Доступно через: ${Math.floor(diff / 3600000)}ч ${Math.floor((diff % 3600000) / 60000)}м`;
+        btn.innerText = "Уже получено";
+    } else { btn.disabled = false; btn.innerText = "Забрать бонус"; timer.innerText = ""; }
+}
+
+document.getElementById('claim-bonus-btn').addEventListener('click', async () => {
+    try {
+        const r = await fetchWithTimeout(`${API_URL}/api/bonus`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
+        if (r.ok) {
+            const d = await r.json();
+            coins = d.coins; userData.last_bonus = new Date().toISOString();
+            updateUI(); checkBonusStatus(); alert(`🎁 Вы получили ${d.amount} Kisa!`);
+        }
+    } catch(e) { alert('Ошибка'); }
+});
+
+async function loadLeaderboard() {
+    const container = document.getElementById('leaderboard-container');
+    try {
+        const r = await fetchWithTimeout(`${API_URL}/api/leaderboard`, { method: 'GET' });
+        const data = await r.json();
+        container.innerHTML = '';
+        if (data.length === 0) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Пока нет игроков</div>'; return; }
+        data.forEach((player, index) => {
+            container.innerHTML += `<div class="leader-row"><div class="leader-left">
+                <span class="leader-rank">${index + 1}</span>
+                <img class="leader-avatar" src="${player.photo_url || 'https://ui-avatars.com/api/?name='+(player.username||'U')+'&background=00D1FF&color=fff'}">
+                <span class="leader-name">${player.username || 'Игрок'}</span></div>
+                <span class="leader-coins">${player.coins} 🐾</span></div>`;
+        });
+    } catch(e) { container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Ошибка загрузки</div>'; }
+}
+
+loadProgress();
