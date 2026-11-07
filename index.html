@@ -129,6 +129,7 @@
         let pendingUpgrade = false;
         let currentTheme = localStorage.getItem('kisa_theme') || 'dark';
         let syncTimer = null;
+        let lastClickTime = 0; // Защита от откатов
 
         const scoreEl = document.getElementById('score');
         const btnClick = document.getElementById('upgrade-click');
@@ -149,7 +150,7 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Безопасный запрос, чтобы игра не висла, если сервер спит
+        // Безопасный запрос с тайм-аутом (чтобы не зависало, если Render спит)
         async function fetchWithTimeout(url, options, timeout = 5000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
@@ -231,7 +232,9 @@
             syncTimer = setTimeout(sync, 800);
         }
 
+        // === КЛИК ПО КОТУ ===
         document.getElementById('coin-btn').addEventListener('click', () => {
+            lastClickTime = Date.now(); // Запоминаем время клика
             coins += clickPower;
             pendingCoins += clickPower;
             updateUI();
@@ -239,6 +242,7 @@
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
+        // === УЛУЧШЕНИЕ ===
         btnClick.addEventListener('click', () => {
             if (coins >= costClick) {
                 coins -= costClick;
@@ -252,6 +256,7 @@
             }
         });
 
+        // === СБРОС ===
         document.getElementById('reset-btn').addEventListener('click', async () => {
             if (!confirm('Сбросить весь прогресс?')) return;
             coins = 0; clickPower = 1; costClick = 15;
@@ -268,6 +273,7 @@
             document.getElementById('nav-main').click();
         });
 
+        // === ВКЛАДКИ ===
         document.getElementById('nav-main').addEventListener('click', () => {
             document.getElementById('nav-main').classList.add('active');
             document.getElementById('nav-settings').classList.remove('active');
@@ -281,16 +287,25 @@
             document.getElementById('screen-main').classList.remove('active');
         });
 
+        // === ФОНОВАЯ СИНХРОНИЗАЦИЯ (РАЗ В 10 СЕК) ===
         setInterval(async () => {
             if (!tg?.initData) return;
+            
+            // 1. Если есть несохраненные клики — не трогаем сервер
             if (pendingCoins !== 0 || pendingUpgrade) return;
+            
+            // 2. Если вы кликнули менее 3 секунд назад — ждем (защита от отката)
+            if (Date.now() - lastClickTime < 3000) return;
+
             try {
                 const r = await fetchWithTimeout(`${API_URL}/api/load`, {
                     method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ initData: tg.initData })
                 }, 5000);
                 const d = await r.json();
-                if (d.coins !== coins && d.coins !== undefined) {
+                
+                // 3. Обновляем UI, ТОЛЬКО если сервер прислал БОЛЬШЕ монет (защита от отката)
+                if (d.coins !== undefined && (d.coins > coins || coins === 0)) {
                     coins = d.coins;
                     clickPower = d.clickPower;
                     costClick = 15 * clickPower;
