@@ -15,7 +15,12 @@
             <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
         </div>
         <div class="clicker-area">
-            <div id="buff-timer" class="buff-timer hidden">🔥 x2: <span id="buff-time">0:00</span></div>
+            <!-- ДВА ТАЙМЕРА БУСТОВ -->
+            <div class="buff-container">
+                <div id="buff-click-timer" class="buff-timer hidden">🔥 Клик: <span id="buff-click-time">0:00</span></div>
+                <div id="buff-auto-timer" class="buff-timer hidden">🤖 Авто: <span id="buff-auto-time">0:00</span></div>
+            </div>
+
             <div class="huge-balance"><span id="balance-main">0</span></div>
             <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
             <button class="click-btn" id="coin-btn">🐱</button>
@@ -25,6 +30,7 @@
         </div>
     </div>
 
+    <!-- ОСТАЛЬНОЙ HTML ОСТАЕТСЯ ПРЕЖНИМ -->
     <div class="screen" id="screen-games">
         <div class="header"><div class="logo">🎮 Мини-игры</div></div>
         <div class="game-grid">
