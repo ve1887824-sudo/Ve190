@@ -3,38 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame - Финал</title>
-    <!-- Подключаем скрипт Telegram -->
+    <title>KisaGame</title>
+    <!-- Скрипт Telegram для вибрации -->
     <script src="https://telegram.org"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background: radial-gradient(circle, #1e1b4b, #0f172a);
             color: #ffffff;
             margin: 0; padding: 20px; text-align: center;
             display: flex; flex-direction: column; align-items: center; justify-content: space-between;
             min-height: 85vh; user-select: none; -webkit-user-select: none;
         }
-        .score-container { font-size: 52px; font-weight: bold; color: #f1c40f; margin-top: 10px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
+        .score-container { font-size: 52px; font-weight: bold; color: #f1c40f; margin-top: 20px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
         .clicker-box { position: relative; margin: 40px 0; }
         .click-btn { font-size: 130px; background: none; border: none; cursor: pointer; transition: transform 0.05s; outline: none; -webkit-tap-highlight-color: transparent; }
         .click-btn:active { transform: scale(0.85); }
-        .panel { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; width: 100%; max-width: 320px; margin-bottom: 10px; }
+        .panel { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; width: 100%; max-width: 320px; margin-bottom: 20px; }
         .btn-upgrade {
             background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white;
-            border: none; padding: 12px; font-size: 14px; border-radius: 10px;
-            width: 100%; font-weight: bold; cursor: pointer; margin-top: 8px;
+            border: none; padding: 14px; font-size: 15px; border-radius: 12px;
+            width: 100%; font-weight: bold; cursor: pointer;
         }
         .btn-upgrade:disabled { background: #475569; opacity: 0.4; cursor: not-allowed; }
-        .status { font-size: 12px; color: #10b981; margin-top: 5px; font-weight: 500; }
     </style>
 </head>
 <body>
 
     <div>
-        <h2 id="user-greeting">KisaGame — Профиль</h2>
+        <h2>KisaGame</h2>
         <div class="score-container" id="score">0 🐾</div>
-        <div class="status" id="db-status">Загрузка данных из облака...</div>
     </div>
 
     <div class="clicker-box">
@@ -46,68 +44,39 @@
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
-        // Игровые переменные
-        let coins = 0;
-        let clickPower = 1;
-        let costClick = 15;
+        // Загрузка сохраненного прогресса из памяти планшета
+        let coins = parseInt(localStorage.getItem('kisa_coins')) || 0;
+        let clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
+        let costClick = 15 * clickPower;
 
         const scoreEl = document.getElementById('score');
         const btnClick = document.getElementById('upgrade-click');
-        const dbStatusEl = document.getElementById('db-status');
-        const greetingEl = document.getElementById('user-greeting');
 
-        if (tg && tg.initDataUnsafe?.user) {
-            greetingEl.innerText = `Игрок: ${tg.initDataUnsafe.user.first_name}`;
+        // Функция сохранения данных на планшет
+        function saveToDevice() {
+            localStorage.setItem('kisa_coins', coins);
+            localStorage.setItem('kisa_power', clickPower);
         }
 
-        // Чистая загрузка из Облака Telegram без серверов
-        function initAccount() {
-            if (tg && tg.CloudStorage) {
-                tg.CloudStorage.getItems(['kisa_coins', 'kisa_power'], (err, values) => {
-                    if (!err) {
-                        if (values.kisa_coins) coins = parseInt(values.kisa_coins) || 0;
-                        if (values.kisa_power) clickPower = parseInt(values.kisa_power) || 1;
-                        costClick = 15 * clickPower;
-                        dbStatusEl.innerText = "Профиль успешно загружен! ✅";
-                    } else {
-                        dbStatusEl.innerText = "Создан новый профиль! 🎉";
-                    }
-                    updateUI();
-                });
-            } else {
-                dbStatusEl.innerText = "Локальный режим (Вне TG) 🎮";
-                updateUI();
-            }
-        }
-
-        // Чистое сохранение в Облака Telegram
-        function saveBalance() {
-            if (tg && tg.CloudStorage) {
-                tg.CloudStorage.setItem('kisa_coins', coins.toString());
-                tg.CloudStorage.setItem('kisa_power', clickPower.toString());
-            }
-        }
-
-        // Логика нажатия по котику
+        // Клик по котику
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             updateUI();
-            saveBalance(); // Мгновенное сохранение прогресса в Telegram
+            saveToDevice(); // Мгновенное сохранение на устройство
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
-        // Покупка апгрейда
+        // Прокачка силы клика
         btnClick.addEventListener('click', () => {
             if (coins >= costClick) {
                 coins -= costClick;
                 clickPower += 1;
                 costClick = 15 * clickPower;
                 updateUI();
-                saveBalance();
+                saveToDevice(); // Сохраняем апгрейд
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             }
         });
@@ -118,8 +87,8 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Запуск игры
-        initAccount();
+        // Первоначальное обновление экрана при старте
+        updateUI();
     </script>
 </body>
 </html>
