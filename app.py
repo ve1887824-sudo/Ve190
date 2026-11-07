@@ -33,8 +33,6 @@ def init_db():
                 last_bonus TIMESTAMP
             )
         """)
-        # Добавляем колонку автоклика, если её нет
-        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_click INTEGER DEFAULT 0;")
         conn.commit(); cur.close(); conn.close()
     except Exception as e:
         print("DB init error:", e)
@@ -74,15 +72,13 @@ def load():
     row = cur.fetchone()
     conn.commit(); cur.close(); conn.close()
 
-    last_bonus = row["last_bonus"].isoformat() if row["last_bonus"] else None
-
     return jsonify({
         "coins": row["coins"], "clickPower": row["click_power"],
         "autoClick": row["auto_click"],
         "username": row["username"], "photo_url": row["photo_url"],
         "user_id": uid, "games_played": row["games_played"],
         "wins": row["wins"], "losses": row["losses"],
-        "last_bonus": last_bonus
+        "last_bonus": row["last_bonus"].isoformat() if row["last_bonus"] else None
     })
 
 @app.route("/api/sync", methods=["POST"])
@@ -93,26 +89,20 @@ def sync():
     uid = str(user["id"])
 
     add_coins = int(payload.get("addCoins", 0))
-    # Теперь сервер принимает конкретную силу клика и автоклика
     new_click_power = payload.get("clickPower")
     new_auto_click = payload.get("autoClick")
 
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Обновляем баланс
-    cur.execute("""
-        UPDATE users SET coins = GREATEST(0, coins + %s) WHERE user_id = %s
-    """, (add_coins, uid))
+    cur.execute("UPDATE users SET coins = GREATEST(0, coins + %s) WHERE user_id = %s", (add_coins, uid))
     
-    # Если пришли новые улучшения, обновляем их
     if new_click_power is not None:
         cur.execute("UPDATE users SET click_power = %s WHERE user_id = %s", (int(new_click_power), uid))
     if new_auto_click is not None:
         cur.execute("UPDATE users SET auto_click = %s WHERE user_id = %s", (int(new_auto_click), uid))
 
     conn.commit(); cur.close(); conn.close()
-
     return jsonify({"status": "ok"})
 
 @app.route("/api/game", methods=["POST"])
@@ -135,13 +125,9 @@ def game():
 
     delta = bet if win else -bet
     cur.execute("""
-        UPDATE users SET 
-            coins = GREATEST(0, coins + %s),
-            games_played = games_played + 1,
-            wins = wins + %s,
-            losses = losses + %s
-        WHERE user_id = %s
-        RETURNING coins
+        UPDATE users SET coins = GREATEST(0, coins + %s), games_played = games_played + 1,
+            wins = wins + %s, losses = losses + %s
+        WHERE user_id = %s RETURNING coins
     """, (delta, 1 if win else 0, 0 if win else 1, uid))
     
     new_coins = cur.fetchone()["coins"]
@@ -164,16 +150,12 @@ def claim_bonus():
         diff = (now - row["last_bonus"]).total_seconds()
         if diff < 86400:
             cur.close(); conn.close()
-            return jsonify({"error": "wait", "time_left": int(86400 - diff)}), 400
+            return jsonify({"error": "wait"}), 400
 
-    bonus_amount = 500
-    cur.execute("""
-        UPDATE users SET coins = coins + %s, last_bonus = %s WHERE user_id = %s
-        RETURNING coins
-    """, (bonus_amount, now, uid))
+    cur.execute("UPDATE users SET coins = coins + 500, last_bonus = %s WHERE user_id = %s RETURNING coins", (now, uid))
     new_coins = cur.fetchone()["coins"]
     conn.commit(); cur.close(); conn.close()
-    return jsonify({"success": True, "amount": bonus_amount, "coins": new_coins})
+    return jsonify({"success": True, "amount": 500, "coins": new_coins})
 
 @app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
