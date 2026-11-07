@@ -94,6 +94,7 @@ async function sync() {
     const add = pendingCoins, upg = pendingUpgrade;
     pendingCoins = 0; pendingUpgrade = false;
     try {
+        // Отправляем изменения (включая флаг улучшения)
         await fetchWithTimeout(`${API_URL}/api/sync`, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ initData: tg.initData, addCoins: add, upgradePower: upg })
@@ -120,14 +121,14 @@ window.buyUpgrade = function(type) {
     if (type === 'power') {
         let cost = 15 + (clickPower * 10);
         if (coins >= cost) {
-            coins -= cost; clickPower += 1; pendingCoins -= cost; pendingUpgrade = true; 
+            coins -= cost; clickPower += 1; pendingCoins -= cost; pendingUpgrade = true; // Отправляем на сервер
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
     } else if (type === 'auto') {
         let cost = 100 + (autoClickPower * 50);
         if (coins >= cost) {
-            coins -= cost; autoClickPower += 1; pendingCoins -= cost;
+            coins -= cost; autoClickPower += 1; pendingCoins -= cost; // Автоклик пока чисто локальный
             updateUI(); scheduleSync();
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
@@ -151,12 +152,11 @@ window.openGame = function(gameType) {
     const ui = document.getElementById('game-ui');
     document.getElementById('bet-input').value = 10;
     ui.innerHTML = '';
-
     switchScreen('screen-game-play');
 
     if (gameType === 'cups') {
         document.getElementById('game-header-title').innerText = "🥥 Наперстки";
-        ui.innerHTML = `<p>Выбери стаканчик, под которым котик</p>
+        ui.innerHTML = `<p>Найди котика</p>
             <div class="cups-container">
                 <div class="cup" id="cup-1" onclick="selectChoice('cups', 1)">🥥</div>
                 <div class="cup" id="cup-2" onclick="selectChoice('cups', 2)">🥥</div>
@@ -164,25 +164,25 @@ window.openGame = function(gameType) {
             </div>`;
     } else if (gameType === 'dice') {
         document.getElementById('game-header-title').innerText = "🎲 Кости";
-        ui.innerHTML = `<p>Сумма будет больше 7?</p>
+        ui.innerHTML = `<p>Сумма > 7?</p>
             <div class="dice-container">
-                <div class="dice">⚀</div><div class="dice">⚀</div>
+                <div class="dice-box" id="d1">⚀</div><div class="dice-box" id="d2">⚀</div>
             </div>
-            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+            <div style="display:flex; gap:15px; justify-content:center;">
                 <button class="guess-btn" id="dice-yes" onclick="selectChoice('dice', true)">Да</button>
                 <button class="guess-btn" id="dice-no" onclick="selectChoice('dice', false)">Нет</button>
             </div>`;
     } else if (gameType === 'coin') {
         document.getElementById('game-header-title').innerText = "🪙 Монетка";
         ui.innerHTML = `<p>Орел или Решка?</p>
-            <div class="coin-container"><div class="coin">🪙</div></div>
-            <div style="display:flex; gap:15px; justify-content:center; margin-top:20px;">
+            <div class="coin-wrapper"><div class="coin-3d" id="coin-obj">🪙</div></div>
+            <div style="display:flex; gap:15px; justify-content:center;">
                 <button class="guess-btn" id="coin-yes" onclick="selectChoice('coin', true)">Орел</button>
                 <button class="guess-btn" id="coin-no" onclick="selectChoice('coin', false)">Решка</button>
             </div>`;
     } else if (gameType === 'slots') {
         document.getElementById('game-header-title').innerText = "🎰 Слоты";
-        ui.innerHTML = `<p>Поймай 3 одинаковых (Шанс 15%)</p>
+        ui.innerHTML = `<p>Поймай 3 одинаковых (x10)</p>
             <div class="slots-container">
                 <div class="slot-reel" id="reel-1">🍒</div>
                 <div class="slot-reel" id="reel-2">🍋</div>
@@ -192,7 +192,11 @@ window.openGame = function(gameType) {
     } else if (gameType === 'wheel') {
         document.getElementById('game-header-title').innerText = "🎡 Колесо";
         ui.innerHTML = `<p>Испытай удачу (Шанс 20%)</p>
-            <div class="wheel-container" id="wheel">🎡</div>`;
+            <div class="wheel-wrapper">
+                <div class="wheel-pointer">▼</div>
+                <div class="wheel-circle" id="wheel-obj"></div>
+                <div class="wheel-center">🐾</div>
+            </div>`;
         gameChoice = true;
     } else if (gameType === 'guess') {
         document.getElementById('game-header-title').innerText = "🔢 Угадай число";
@@ -222,7 +226,7 @@ window.selectChoice = function(game, choice) {
     }
 }
 
-// --- ЧАСТЬ 2 БУДЕТ НИЖЕ ---
+// --- ЧАСТЬ 2: ЛОГИКА ИГР И АНИМАЦИИ ---
 window.executeGame = async function() {
     if (!gameChoice) { alert("Сначала сделайте выбор!"); return; }
     const bet = parseInt(document.getElementById('bet-input').value);
@@ -232,10 +236,14 @@ window.executeGame = async function() {
     playBtn.disabled = true;
     playBtn.innerText = "Играем...";
 
-    if (currentGame === 'dice') document.querySelectorAll('.dice').forEach(d => d.classList.add('rolling'));
-    else if (currentGame === 'coin') document.querySelector('.coin').classList.add('flip');
+    // Запуск анимаций
+    if (currentGame === 'dice') document.querySelectorAll('.dice-box').forEach(d => d.classList.add('rolling'));
+    else if (currentGame === 'coin') document.getElementById('coin-obj').classList.add('flipping');
     else if (currentGame === 'slots') document.querySelectorAll('.slot-reel').forEach(r => r.classList.add('spinning'));
-    else if (currentGame === 'wheel') document.getElementById('wheel').classList.add('spinning');
+    else if (currentGame === 'wheel') {
+        let randomDeg = Math.floor(Math.random() * 360) + 1440;
+        document.getElementById('wheel-obj').style.transform = `rotate(${randomDeg}deg)`;
+    }
 
     setTimeout(async () => {
         let win = false;
@@ -244,7 +252,8 @@ window.executeGame = async function() {
         if (currentGame === 'cups') {
             const cat = Math.floor(Math.random() * 3) + 1;
             win = (gameChoice === cat);
-            resultMsg = win ? "Котик был здесь! 😻" : "Пусто... Котик был в другом стаканчике 🐾";
+            document.getElementById(`cup-${cat}`).classList.add('reveal-cat');
+            resultMsg = win ? "Котик был здесь! 😻" : "Пусто!";
         } else if (currentGame === 'dice') {
             const d1 = Math.ceil(Math.random() * 6);
             const d2 = Math.ceil(Math.random() * 6);
@@ -259,16 +268,12 @@ window.executeGame = async function() {
             resultMsg = win ? "ДЖЕКПОТ! 🎰" : "Не повезло...";
         } else if (currentGame === 'wheel') {
             win = Math.random() < 0.2;
-            resultMsg = win ? "Колесо остановилось на секторе X2! 🎡" : "Колесо остановилось на пустом секторе.";
+            resultMsg = win ? "Победа! 🎡" : "Пусто.";
         } else if (currentGame === 'guess') {
             const num = Math.floor(Math.random() * 10) + 1;
             win = (gameChoice === num);
             resultMsg = `Выпало число: ${num}`;
         }
-
-        document.querySelectorAll('.dice').forEach(d => d.classList.remove('rolling'));
-        document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
-        if(document.getElementById('wheel')) document.getElementById('wheel').classList.remove('spinning');
 
         try {
             const r = await fetchWithTimeout(`${API_URL}/api/game`, {
@@ -296,9 +301,16 @@ window.executeGame = async function() {
             }
         } catch(e) { alert('Ошибка сети'); }
         
+        // Возвращаем всё в исходное состояние
+        document.querySelectorAll('.dice-box').forEach(d => d.classList.remove('rolling'));
+        document.querySelectorAll('.slot-reel').forEach(r => r.classList.remove('spinning'));
+        if(document.getElementById('coin-obj')) document.getElementById('coin-obj').classList.remove('flipping');
+        if(document.getElementById('wheel-obj')) document.getElementById('wheel-obj').style.transform = 'rotate(0deg)';
+        document.querySelectorAll('.reveal-cat').forEach(c => c.classList.remove('reveal-cat'));
+        
         playBtn.disabled = false;
         playBtn.innerText = "Играть";
-    }, 700);
+    }, 1500); // 1.5 секунды на анимацию
 }
 
 function checkBonusStatus() {
