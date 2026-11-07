@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Mini App</title>
+    <!-- Подключаем официальный скрипт Telegram -->
+    <script src="https://telegram.org"></script>
+    <style>
+        /* Используем системные цвета Telegram для нативного вида */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 24px; margin: 10px 0; }
+        p { color: var(--tg-theme-hint-color, #999999); font-size: 16px; }
+        .btn {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        .btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div class="avatar" id="user-avatar">?</div>
+    <h1>Привет, <span id="user-name">Пользователь</span>!</h1>
+    <p>Твой ID: <span id="user-id">неизвестен</span></p>
+    
+    <button class="btn" id="action-btn">Проверить работу</button>
+
+    <script>
+        // Инициализируем Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        
+        // Расширяем приложение на всю высоту экрана
+        tg.expand();
+        
+        // Сообщаем Telegram, что приложение готово к отрисовке
+        tg.ready();
+
+        // Проверяем, запущен ли сайт внутри Telegram
+        if (tg.initDataUnsafe?.user) {
+            const user = tg.initDataUnsafe.user;
+            
+            // Выводим имя и ID пользователя
+            document.getElementById('user-name').innerText = user.first_name;
+            document.getElementById('user-id').innerText = user.id;
+            
+            // Ставим первую букву имени в аватарку
+            document.getElementById('user-avatar').innerText = user.first_name.charAt(0);
+        }
+
+        // Навешиваем действие на кнопку
+        document.getElementById('action-btn').addEventListener('click', () => {
+            // Запускаем легкую вибрацию смартфона
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+            
+            // Показываем нативное всплывающее окно Telegram
+            tg.showAlert("Ура! Mini App работает с планшета!");
+        });
+    </script>
+</body>
+</html>
