@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame - Профессиональный кликер</title>
+    <title>KisaGame - Финал</title>
     <!-- Подключаем скрипт Telegram -->
     <script src="https://telegram.org"></script>
     <style>
@@ -26,7 +26,7 @@
             width: 100%; font-weight: bold; cursor: pointer; margin-top: 8px;
         }
         .btn-upgrade:disabled { background: #475569; opacity: 0.4; cursor: not-allowed; }
-        .status { font-size: 12px; color: #94a3b8; margin-top: 5px; font-weight: 500; }
+        .status { font-size: 12px; color: #10b981; margin-top: 5px; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -34,7 +34,7 @@
     <div>
         <h2 id="user-greeting">KisaGame — Профиль</h2>
         <div class="score-container" id="score">0 🐾</div>
-        <div class="status" id="db-status">Подключение к системе аккаунтов...</div>
+        <div class="status" id="db-status">Загрузка данных из облака...</div>
     </div>
 
     <div class="clicker-box">
@@ -46,16 +46,11 @@
     </div>
 
     <script>
-        // Инициализация Telegram
+        // Инициализация Telegram WebApp
         const tg = window.Telegram?.WebApp;
         if (tg) { tg.expand(); tg.ready(); }
 
-        // Параметры вашей личной базы данных Кис
-        const url = "https://supabase.co";
-        const apiKey = "sb_publishable_GtVnaoI6QiSyj8U9X4UWdw_cx29rxUf";
-
-        // Переменные игрока
-        let userId = "guest_test_id"; 
+        // Игровые переменные
         let coins = 0;
         let clickPower = 1;
         let costClick = 15;
@@ -66,70 +61,42 @@
         const greetingEl = document.getElementById('user-greeting');
 
         if (tg && tg.initDataUnsafe?.user) {
-            userId = tg.initDataUnsafe.user.id.toString();
             greetingEl.innerText = `Игрок: ${tg.initDataUnsafe.user.first_name}`;
         }
 
-        // Загрузка аккаунта напрямую через HTTP-запрос (без внешних библиотек!)
-        async function initAccount() {
-            try {
-                const response = await fetch(`${url}?tg_id=eq.${userId}&select=*`, {
-                    method: 'GET',
-                    headers: { 'apikey': apiKey, 'Authorization': `Bearer ${apiKey}` }
+        // Чистая загрузка из Облака Telegram без серверов
+        function initAccount() {
+            if (tg && tg.CloudStorage) {
+                tg.CloudStorage.getItems(['kisa_coins', 'kisa_power'], (err, values) => {
+                    if (!err) {
+                        if (values.kisa_coins) coins = parseInt(values.kisa_coins) || 0;
+                        if (values.kisa_power) clickPower = parseInt(values.kisa_power) || 1;
+                        costClick = 15 * clickPower;
+                        dbStatusEl.innerText = "Профиль успешно загружен! ✅";
+                    } else {
+                        dbStatusEl.innerText = "Создан новый профиль! 🎉";
+                    }
+                    updateUI();
                 });
-                
-                const data = await response.json();
-
-                if (data && data.length > 0) {
-                    // Игрок найден в базе данных
-                    const player = data[0];
-                    coins = parseInt(player.coins) || 0;
-                    clickPower = parseInt(player.click_power) || 1;
-                    costClick = 15 * clickPower;
-                    dbStatusEl.innerText = "Профиль успешно загружен! ✅";
-                } else {
-                    // Игрока нет, регистрируем его
-                    dbStatusEl.innerText = "Создаем профиль в базе данных...";
-                    await fetch(url, {
-                        method: 'POST',
-                        headers: { 
-                            'apikey': apiKey, 
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({ tg_id: userId, coins: 0, click_power: 1 })
-                    });
-                    dbStatusEl.innerText = "Новый аккаунт успешно создан! 🎉";
-                }
-            } catch (err) {
-                dbStatusEl.innerText = "Ошибка сети при загрузке. ❌";
-            }
-            updateUI();
-        }
-
-        // Прямое сохранение баланса в базу данных
-        async function saveBalance() {
-            try {
-                await fetch(`${url}?tg_id=eq.${userId}`, {
-                    method: 'PATCH',
-                    headers: { 
-                        'apikey': apiKey, 
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ coins: coins, click_power: clickPower })
-                });
-            } catch (e) {
-                console.error("Ошибка автосохранения баланса:", e);
+            } else {
+                dbStatusEl.innerText = "Локальный режим (Вне TG) 🎮";
+                updateUI();
             }
         }
 
-        // Логика тапа по котику
+        // Чистое сохранение в Облака Telegram
+        function saveBalance() {
+            if (tg && tg.CloudStorage) {
+                tg.CloudStorage.setItem('kisa_coins', coins.toString());
+                tg.CloudStorage.setItem('kisa_power', clickPower.toString());
+            }
+        }
+
+        // Логика нажатия по котику
         document.getElementById('coin-btn').addEventListener('click', () => {
             coins += clickPower;
             updateUI();
-            saveBalance(); // Моментальная отправка данных в вашу таблицу
+            saveBalance(); // Мгновенное сохранение прогресса в Telegram
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         });
 
@@ -151,7 +118,7 @@
             btnClick.disabled = coins < costClick;
         }
 
-        // Запуск
+        // Запуск игры
         initAccount();
     </script>
 </body>
