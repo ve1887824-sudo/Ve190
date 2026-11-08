@@ -1,331 +1,281 @@
 const API_URL = 'https://ve190-9.onrender.com'; 
-const ADMIN_ID = "5372048108"; 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 
-let coins = 0, clickPower = 1, autoClickPower = 0;
-let pendingCoins = 0;
-let syncTimer = null, userData = {};
-let currentGame = '', gameChoice = null;
+let coins = 0;
+let userData = {};
 
-let buffClickEndTime = 0;
-let buffAutoEndTime = 0;
+// RPG Переменные
+let heroLevel = 1;
+let heroMaxHp = 100;
+let heroHp = 100;
+let heroPower = 15; 
+let currentLocation = '';
+let isFighting = false;
+let currentMonster = null;
 
 window.switchScreen = function(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if (screenId === 'screen-main') document.getElementById('nav-main').classList.add('active');
-    if (screenId === 'screen-games') document.getElementById('nav-games').classList.add('active');
-    if (screenId === 'screen-bonus') { document.getElementById('nav-bonus').classList.add('active'); checkBonusStatus(); }
-    if (screenId === 'screen-profile') document.getElementById('nav-profile').classList.add('active');
-    if (screenId === 'screen-leaderboard') { document.getElementById('nav-leader').classList.add('active'); loadLeaderboard(); }
-    if (screenId === 'screen-settings') document.getElementById('nav-settings').classList.add('active');
+}
+
+function formatMoney(num) {
+    return Math.floor(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 function updateUI() {
-    document.getElementById('balance-header').innerText = coins;
-    document.getElementById('balance-main').innerText = coins;
-    document.getElementById('stat-balance').innerText = coins;
+    document.getElementById('balance-header').innerText = formatMoney(coins);
+    document.getElementById('main-level').innerText = heroLevel;
+    document.getElementById('main-xp').innerText = (heroLevel * 100) - 100; // Просто для красоты
+    document.getElementById('main-max-xp').innerText = heroLevel * 100;
+    document.getElementById('xp-fill').style.width = `${(heroLevel % 10) * 10}%`; // Заглушка
     
-    const costPower = 15 + (clickPower * 10);
-    const costAuto = 100 + (autoClickPower * 50);
-    
-    if(document.getElementById('btn-up-power')) {
-        document.getElementById('btn-up-power').innerText = `${costPower} 🐾`;
-        document.getElementById('btn-up-power').disabled = coins < costPower;
-        document.getElementById('btn-up-auto').innerText = `${costAuto} 🐾`;
-        document.getElementById('btn-up-auto').disabled = coins < costAuto;
-        document.getElementById('btn-buff-click').innerText = `500 🐾`;
-        document.getElementById('btn-buff-click').disabled = coins < 500;
-        document.getElementById('btn-buff-auto').innerText = `1000 🐾`;
-        document.getElementById('btn-buff-auto').disabled = coins < 1000;
-    }
+    const hpText = document.getElementById('rpg-hp-text');
+    if (hpText) hpText.innerText = `HP: ${Math.floor(heroHp)}/${heroMaxHp}`;
 }
 
+// Восстановление HP вне боя
 setInterval(() => {
-    if (autoClickPower > 0) {
-        let mult = (buffAutoEndTime > Date.now()) ? 2 : 1;
-        let earn = autoClickPower * mult;
-        coins += earn; pendingCoins += earn;
-        updateUI(); scheduleSync();
+    if (!isFighting && heroHp < heroMaxHp) {
+        heroHp += 2;
+        if (heroHp > heroMaxHp) heroHp = heroMaxHp;
+        updateUI();
     }
-    
-    const clickEl = document.getElementById('buff-click-timer');
-    const clickTimeEl = document.getElementById('buff-click-time');
-    if (buffClickEndTime > Date.now()) {
-        clickEl.classList.remove('hidden');
-        const diff = Math.floor((buffClickEndTime - Date.now()) / 1000);
-        clickTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
-    } else { clickEl.classList.add('hidden'); }
-
-    const autoEl = document.getElementById('buff-auto-timer');
-    const autoTimeEl = document.getElementById('buff-auto-time');
-    if (buffAutoEndTime > Date.now()) {
-        autoEl.classList.remove('hidden');
-        const diff = Math.floor((buffAutoEndTime - Date.now()) / 1000);
-        autoTimeEl.innerText = `${Math.floor(diff/60)}:${(diff%60<10?'0':'')}${diff%60}`;
-    } else { autoEl.classList.add('hidden'); }
 }, 1000);
 
-async function fetchWithTimeout(url, options, timeout = 5000) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-    try { return await fetch(url, { ...options, signal: controller.signal }); clearTimeout(id); } 
-    catch (e) { clearTimeout(id); throw e; }
-}
-
-async function loadProgress() {
-    clickPower = parseInt(localStorage.getItem('kisa_power')) || 1;
-    autoClickPower = parseInt(localStorage.getItem('kisa_auto')) || 0;
-
-    if (!tg?.initData) return;
-    try {
-        const r = await fetchWithTimeout(`${API_URL}/api/load`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
-        userData = await r.json();
-        coins = parseInt(userData.coins) || 0; 
-        if (userData.clickPower) clickPower = parseInt(userData.clickPower);
-        if (userData.autoClick) autoClickPower = parseInt(userData.autoClick); 
-        
-        localStorage.setItem('kisa_power', clickPower);
-        localStorage.setItem('kisa_auto', autoClickPower);
-        
-        document.getElementById('user-name').innerText = userData.username || "Игрок";
-        document.getElementById('user-username').innerText = userData.username || "username";
-        document.getElementById('user-id').innerText = userData.user_id;
-        document.getElementById('user-avatar').src = userData.photo_url || "https://ui-avatars.com/api/?name=K&background=00D1FF&color=fff";
-        document.getElementById('stat-games').innerText = userData.games_played || 0;
-        document.getElementById('stat-wins').innerText = userData.wins || 0;
-        document.getElementById('stat-losses').innerText = userData.losses || 0;
-    } catch(e) { console.warn('Сервер недоступен, используем локальные данные', e); }
-    updateUI();
-}
-
+// СИНХРОНИЗАЦИЯ
+let syncTimer = null;
 async function sync() {
     if (!tg?.initData) return;
-    localStorage.setItem('kisa_power', clickPower);
-    localStorage.setItem('kisa_auto', autoClickPower);
-
-    if (pendingCoins === 0 && clickPower === userData.clickPower && autoClickPower === userData.autoClick) return;
-    
-    const add = pendingCoins;
-    pendingCoins = 0; 
-    userData.clickPower = clickPower; 
-    userData.autoClick = autoClickPower;
-    
-    try {
-        await fetchWithTimeout(`${API_URL}/api/sync`, { 
-            method:'POST', headers:{'Content-Type':'application/json'}, 
-            body: JSON.stringify({ initData: tg.initData, addCoins: add, clickPower: clickPower, autoClick: autoClickPower }) 
-        });
-    } catch(e) { pendingCoins += add; }
-}
-
-function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(sync, 1000); }
-
-document.getElementById('coin-btn').addEventListener('click', () => {
-    let mult = (buffClickEndTime > Date.now()) ? 2 : 1;
-    let earn = clickPower * mult;
-    coins += earn; pendingCoins += earn;
-    updateUI(); scheduleSync();
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-});
-
-window.openShop = function() { document.getElementById('shop-modal').classList.add('active'); updateUI(); }
-window.closeShop = function() { document.getElementById('shop-modal').classList.remove('active'); }
-
-window.buyUpgrade = function(type) {
-    if (type === 'power') {
-        let cost = 15 + (clickPower * 10);
-        if (coins >= cost) {
-            coins -= cost; clickPower += 1; pendingCoins -= cost; 
-            updateUI(); scheduleSync();
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-    } else if (type === 'auto') {
-        let cost = 100 + (autoClickPower * 50);
-        if (coins >= cost) {
-            coins -= cost; autoClickPower += 1; pendingCoins -= cost;
-            updateUI(); scheduleSync();
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        }
-    }
-}
-
-window.buyBuff = function(type) {
-    if (type === 'click' && coins >= 500) {
-        coins -= 500; pendingCoins -= 500;
-        buffClickEndTime = Math.max(Date.now(), buffClickEndTime) + 300000;
-        updateUI(); scheduleSync();
-    } else if (type === 'auto' && coins >= 1000) {
-        coins -= 1000; pendingCoins -= 1000;
-        buffAutoEndTime = Math.max(Date.now(), buffAutoEndTime) + 300000;
-        updateUI(); scheduleSync();
-    }
-}
-
-window.setBet = function(amount) { document.getElementById('bet-input').value = amount > coins ? coins : amount; }
-
-window.openGame = function(gameType) {
-    currentGame = gameType; gameChoice = null;
-    const ui = document.getElementById('game-ui');
-    document.getElementById('bet-input').value = 10;
-    document.getElementById('win-panel').classList.add('hidden');
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('play-btn').innerText = "Играть";
-    switchScreen('screen-game-play');
-
-    if (gameType === 'cups') {
-        document.getElementById('game-header-title').innerText = "🥥 Наперстки";
-        ui.innerHTML = `<p>Выбери стаканчик</p><div class="slots-container" style="background:transparent; border:none; box-shadow:none;">
-            <div class="slot-reel" style="background:transparent; border:none;" id="cup-1" onclick="selectChoice('cups', 1)">🥥</div>
-            <div class="slot-reel" style="background:transparent; border:none;" id="cup-2" onclick="selectChoice('cups', 2)">🥥</div>
-            <div class="slot-reel" style="background:transparent; border:none;" id="cup-3" onclick="selectChoice('cups', 3)">🥥</div></div>`;
-    } else if (gameType === 'dice') {
-        document.getElementById('game-header-title').innerText = "🎲 Кости";
-        ui.innerHTML = `<p>Сумма > 7?</p><div class="dice-container"><div class="dice-box" id="d1">⚀</div><div class="dice-box" id="d2">⚀</div></div>
-            <div style="display:flex; gap:15px; margin-top:20px;">
-            <button class="quick-bet" id="d-yes" onclick="selectChoice('dice', true)">Да</button>
-            <button class="quick-bet" id="d-no" onclick="selectChoice('dice', false)">Нет</button></div>`;
-    } else if (gameType === 'coin') {
-        document.getElementById('game-header-title').innerText = "🪙 Монетка";
-        ui.innerHTML = `<p>Орел или Решка?</p><div class="coin-wrapper"><div class="coin-3d" id="coin-obj">🪙</div></div>
-            <div style="display:flex; gap:15px; margin-top:20px;">
-            <button class="quick-bet" id="c-yes" onclick="selectChoice('coin', true)">Орел</button>
-            <button class="quick-bet" id="c-no" onclick="selectChoice('coin', false)">Решка</button></div>`;
-    } else if (gameType === 'slots') {
-        document.getElementById('game-header-title').innerText = "🎰 Слоты";
-        ui.innerHTML = `<p>Поймай 3 одинаковых (x10)</p><div class="slots-container">
-            <div class="slot-reel" id="r1">🍒</div><div class="slot-reel" id="r2">🍋</div><div class="slot-reel" id="r3">💎</div></div>`;
-        gameChoice = true;
-    } else if (gameType === 'wheel') {
-        document.getElementById('game-header-title').innerText = "🎡 Колесо";
-        ui.innerHTML = `<p>Испытай удачу!</p><div class="wheel-wrapper">
-            <div class="wheel-pointer">▼</div><div class="wheel-circle" id="wheel-obj"></div><div class="wheel-center">🐾</div></div>`;
-        gameChoice = true;
-    } else if (gameType === 'guess') {
-        document.getElementById('game-header-title').innerText = "🔢 Угадай число";
-        ui.innerHTML = `<p>Выбери число от 1 до 10</p><div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-top:20px;">
-            ${[1,2,3,4,5,6,7,8,9,10].map(n => `<div class="quick-bet" id="g-${n}" onclick="selectChoice('guess', ${n})">${n}</div>`).join('')}</div>`;
-    }
-}
-
-window.selectChoice = function(game, choice) { 
-    gameChoice = choice; if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); 
-    if (game === 'cups') { document.querySelectorAll('.slot-reel').forEach(c => c.style.border='none'); document.getElementById('cup-'+choice).style.border='2px solid var(--accent-blue)'; }
-    if (game === 'dice') { document.getElementById('d-yes').style.background='rgba(255,255,255,0.1)'; document.getElementById('d-no').style.background='rgba(255,255,255,0.1)'; document.getElementById(choice?'d-yes':'d-no').style.background='var(--accent-blue)'; }
-    if (game === 'coin') { document.getElementById('c-yes').style.background='rgba(255,255,255,0.1)'; document.getElementById('c-no').style.background='rgba(255,255,255,0.1)'; document.getElementById(choice?'c-yes':'c-no').style.background='var(--accent-blue)'; }
-    if (game === 'guess') { document.querySelectorAll('.quick-bet').forEach(b=>b.style.border='none'); document.getElementById('g-'+choice).style.border='2px solid var(--accent-blue)'; }
-}
-
-window.executeGame = async function() {
-    if (!gameChoice) { alert("Сначала сделайте выбор!"); return; }
-    const bet = parseInt(document.getElementById('bet-input').value);
-    if (isNaN(bet) || bet <= 0 || bet > coins) { alert('Недостаточно монет!'); return; }
-
-    const playBtn = document.getElementById('play-btn');
-    playBtn.disabled = true; playBtn.innerText = "Ждем-с...";
-    document.getElementById('progress-fill').style.width = '100%';
-
-    if (currentGame === 'dice') document.querySelectorAll('.dice-box').forEach(d => d.classList.add('rolling'));
-    else if (currentGame === 'coin') document.getElementById('coin-obj').classList.add('flipping');
-    else if (currentGame === 'slots') {
-        document.getElementById('r1').classList.add('spinning');
-        setTimeout(()=>document.getElementById('r2').classList.add('spinning'), 200);
-        setTimeout(()=>document.getElementById('r3').classList.add('spinning'), 400);
-    }
-    else if (currentGame === 'wheel') document.getElementById('wheel-obj').style.transform = `rotate(${Math.floor(Math.random()*360)+1440}deg)`;
-
-    setTimeout(async () => {
-        let win = false;
-        let mult = 0;
-        
-        if (currentGame === 'cups') { win = (gameChoice === Math.floor(Math.random()*3)+1); }
-        else if (currentGame === 'dice') { win = (gameChoice === ((Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6)) > 7)); mult = 2; }
-        else if (currentGame === 'coin') { win = (gameChoice === (Math.random()<0.5)); mult = 2; }
-        else if (currentGame === 'slots') { win = Math.random() < 0.2; mult = 10; }
-        else if (currentGame === 'wheel') { win = Math.random() < 0.2; mult = 5; }
-        else if (currentGame === 'guess') { win = (gameChoice === Math.floor(Math.random()*10)+1); mult = 10; }
-
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
         try {
-            const r = await fetchWithTimeout(`${API_URL}/api/game`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData, bet: bet, win: win }) });
-            const d = await r.json();
-            if (d.coins !== undefined) {
-                coins = d.coins; updateUI();
-                if (win) {
-                    document.getElementById('win-panel').classList.remove('hidden');
-                    document.getElementById('win-amount').innerText = bet * (mult || 2) - bet;
-                    document.getElementById('win-multiplier').innerText = `x${mult || 2}`;
-                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                } else {
-                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
-                }
-            }
-        } catch(e) { alert('Ошибка сети'); }
-        
-        document.querySelectorAll('.dice-box, .slot-reel').forEach(el => el.classList.remove('rolling', 'spinning'));
-        if(document.getElementById('coin-obj')) document.getElementById('coin-obj').classList.remove('flipping');
-        document.getElementById('progress-fill').style.width = '0%';
-        playBtn.disabled = false; playBtn.innerText = "Играть снова";
+            await fetch(`${API_URL}/api/sync`, { 
+                method:'POST', headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({ 
+                    initData: tg.initData, 
+                    addCoins: 0, 
+                    heroLevel: heroLevel,
+                    heroHp: Math.floor(heroHp),
+                    heroPower: heroPower
+                }) 
+            });
+        } catch(e) { console.warn('sync error', e); }
     }, 2000);
 }
 
-function checkBonusStatus() {
-    const btn = document.getElementById('claim-bonus-btn');
-    if (!userData.last_bonus) { btn.disabled = false; return; }
-    const diff = 86400000 - (Date.now() - new Date(userData.last_bonus).getTime());
-    if (diff > 0) { btn.disabled = true; document.getElementById('bonus-timer').innerText = `Ждать: ${Math.floor(diff/3600000)}ч`; } 
-    else { btn.disabled = false; }
-}
-
-document.getElementById('claim-bonus-btn').addEventListener('click', async () => {
+async function loadProgress() {
+    if (!tg?.initData) return;
     try {
-        const r = await fetchWithTimeout(`${API_URL}/api/bonus`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ initData: tg.initData }) });
-        if (r.ok) { const d = await r.json(); coins = d.coins; userData.last_bonus = new Date().toISOString(); updateUI(); checkBonusStatus(); alert(`🎁 +${d.amount} Kisa!`); }
-    } catch(e) { alert('Ошибка'); }
-});
-
-async function loadLeaderboard() {
-    const container = document.getElementById('leaderboard-container');
-    try {
-        const r = await fetchWithTimeout(`${API_URL}/api/leaderboard`, { method: 'GET' });
-        const data = await r.json();
-        container.innerHTML = data.map((p, i) => `<div class="leader-row"><div class="leader-left"><span>${i+1}</span><img class="leader-avatar" src="${p.photo_url || 'https://ui-avatars.com/api/?name=U&background=00D1FF&color=fff'}"><span>${p.username || 'Игрок'}</span></div><span class="leader-coins">${p.coins} 🐾</span></div>`).join('');
-    } catch(e) { container.innerHTML = 'Ошибка'; }
-}
-
-// === НАСТРОЙКИ ===
-
-window.changeTheme = function(theme) {
-    localStorage.setItem('kisa_theme', theme);
-    document.body.classList.remove('theme-light', 'theme-cosmic');
-    if (theme === 'light') document.body.classList.add('theme-light');
-    if (theme === 'cosmic') document.body.classList.add('theme-cosmic');
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-}
-
-window.resetProgress = async function() {
-    if (!confirm('Вы уверены, что хотите полностью сбросить весь прогресс? Это действие необратимо.')) return;
-    
-    // 1. Очищаем локальные данные
-    localStorage.removeItem('kisa_power');
-    localStorage.removeItem('kisa_auto');
-    
-    // 2. Отправляем запрос на сервер для обнуления данных
-    try {
-        await fetchWithTimeout(`${API_URL}/api/sync`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ initData: tg.initData, addCoins: -999999999, clickPower: 1, autoClick: 0 })
+        const r = await fetch(`${API_URL}/api/load`, { 
+            method:'POST', headers:{'Content-Type':'application/json'}, 
+            body: JSON.stringify({ initData: tg.initData }) 
         });
-    } catch(e) { console.warn('Не удалось синхронизировать сброс с сервером'); }
+        userData = await r.json();
+        
+        coins = parseInt(userData.coins) || 0; 
+        heroLevel = parseInt(userData.heroLevel) || 1;
+        heroHp = parseInt(userData.heroHp) || 100;
+        heroMaxHp = 100 + (heroLevel * 20);
+        if(heroHp > heroMaxHp) heroHp = heroMaxHp;
+        heroPower = parseInt(userData.heroPower) || 15;
+        
+        updateUI();
+    } catch(e) { console.warn('load error', e); }
+}
+
+// ==========================================
+// КАРТА
+// ==========================================
+window.openRPG = function() {
+    switchScreen('screen-rpg');
+    isFighting = false;
+    renderMap();
+}
+
+function renderMap() {
+    const area = document.getElementById('rpg-area');
+    const getLock = (reqLvl) => heroLevel < reqLvl ? '🔒' : '';
+
+    area.innerHTML = `
+        <div class="map-container">
+            <div style="text-align: center; margin-bottom: 10px;">
+                <div style="font-size: 14px; color: var(--text-muted);">Твой уровень: <b>${heroLevel}</b></div>
+                <div style="font-size: 12px; color: var(--accent-green);">⚔️ Сила атаки: ${heroPower}</div>
+            </div>
+
+            <div class="map-location loc-forest" onclick="enterLocation('forest')">
+                <div class="loc-icon">🌲</div>
+                <div class="loc-lvl">Ур. 1-3</div>
+                <div class="loc-content">
+                    <div class="loc-title">Темный Лес</div>
+                    <div class="loc-desc">Гоблины и дикие звери</div>
+                </div>
+            </div>
+
+            <div class="map-location loc-cave" onclick="enterLocation('cave')" style="${heroLevel < 3 ? 'opacity: 0.5;' : ''}">
+                <div class="loc-icon">🕷️</div>
+                <div class="loc-lvl">Ур. 3+ ${getLock(3)}</div>
+                <div class="loc-content">
+                    <div class="loc-title">Пещера Пауков</div>
+                    <div class="loc-desc">Ядовитые твари и скелеты</div>
+                </div>
+            </div>
+
+            <div class="map-location loc-castle" onclick="enterLocation('castle')" style="${heroLevel < 5 ? 'opacity: 0.5;' : ''}">
+                <div class="loc-icon">🐉</div>
+                <div class="loc-lvl">Ур. 5+ ${getLock(5)}</div>
+                <div class="loc-content">
+                    <div class="loc-title">Замок Дракона</div>
+                    <div class="loc-desc">Обитель древнего босса</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.enterLocation = function(loc) {
+    if (loc === 'cave' && heroLevel < 3) { alert('Нужен 3 уровень!'); return; }
+    if (loc === 'castle' && heroLevel < 5) { alert('Нужен 5 уровень!'); return; }
     
-    // 3. Обновляем интерфейс
-    coins = 0; clickPower = 1; autoClickPower = 0;
-    userData = { clickPower: 1, autoClick: 0 };
+    currentLocation = loc;
+    startBattle();
+}
+
+function startBattle() {
+    isFighting = true;
+    const area = document.getElementById('rpg-area');
+    
+    let monster = { name: "Гоблин", icon: "👺", hp: 60, dmg: 12, reward: 500 };
+    if (currentLocation === 'cave') monster = { name: "Король Пауков", icon: "🕷️", hp: 120, dmg: 20, reward: 2000 };
+    if (currentLocation === 'castle') monster = { name: "Древний Дракон", icon: "🐉", hp: 300, dmg: 40, reward: 10000 };
+
+    monster.hp += (heroLevel * 10);
+    monster.dmg += (heroLevel * 2);
+
+    currentMonster = monster;
+    currentMonster.maxHp = currentMonster.hp;
+
+    area.innerHTML = `
+        <div class="battle-screen">
+            <div class="enemy-zone">
+                <div class="loc-title" style="color: var(--accent-red); font-size: 20px; margin-bottom: 10px;">${monster.name}</div>
+                <div class="enemy-sprite">${monster.icon}</div>
+                <div style="width: 80%; margin-top: 20px;">
+                    <div class="hp-text"><span>HP Врага</span><span id="enemy-hp-txt">${monster.hp}/${monster.maxHp}</span></div>
+                    <div class="hp-bar-bg"><div class="hp-bar-fill hp-enemy" id="enemy-hp-bar" style="width: 100%;"></div></div>
+                </div>
+            </div>
+
+            <div class="battle-log" id="b-log">
+                <div>Вы вступили в бой с ${monster.name}!</div>
+            </div>
+
+            <div class="hero-zone">
+                <div class="hero-sprite">🧙‍♂️</div>
+                <div style="width: 60%;">
+                    <div class="hp-text"><span>Твое HP</span><span id="hero-hp-txt">${Math.floor(heroHp)}/${heroMaxHp}</span></div>
+                    <div class="hp-bar-bg"><div class="hp-bar-fill hp-hero" id="hero-hp-bar" style="width: ${(heroHp/heroMaxHp)*100}%;"></div></div>
+                </div>
+            </div>
+
+            <button class="btn-attack" id="attack-btn" onclick="attackTurn()">⚔️ Атаковать</button>
+        </div>
+    `;
+}
+
+window.attackTurn = function() {
+    if (!isFighting) return;
+    document.getElementById('attack-btn').disabled = true;
+    let log = document.getElementById('b-log');
+
+    let isCrit = Math.random() < 0.15;
+    let dmg = isCrit ? heroPower * 2 : heroPower;
+    
+    currentMonster.hp -= dmg;
+    if (currentMonster.hp < 0) currentMonster.hp = 0;
+
+    if (isCrit) log.innerHTML += `<div style="color: gold">💥 КРИТ! Ты нанес ${dmg} урона!</div>`;
+    else log.innerHTML += `<div>⚔️ Ты нанес ${dmg} урона.</div>`;
+
+    updateBattleUI();
+
+    if (currentMonster.hp <= 0) {
+        winBattle();
+        return;
+    }
+
+    setTimeout(() => {
+        let mDmg = currentMonster.dmg + Math.floor(Math.random() * 5);
+        heroHp -= mDmg;
+        if (heroHp < 0) heroHp = 0;
+        
+        log.innerHTML += `<div style="color: #ef4444">👹 ${currentMonster.name} бьет на ${mDmg} урона.</div>`;
+        log.scrollTop = log.scrollHeight;
+        updateBattleUI();
+
+        if (heroHp <= 0) {
+            loseBattle();
+            return;
+        }
+
+        document.getElementById('attack-btn').disabled = false;
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    }, 600);
+}
+
+function updateBattleUI() {
+    document.getElementById('enemy-hp-txt').innerText = `${currentMonster.hp}/${currentMonster.maxHp}`;
+    document.getElementById('enemy-hp-bar').style.width = `${(currentMonster.hp/currentMonster.maxHp)*100}%`;
+    
+    document.getElementById('hero-hp-txt').innerText = `${Math.floor(heroHp)}/${heroMaxHp}`;
+    document.getElementById('hero-hp-bar').style.width = `${(heroHp/heroMaxHp)*100}%`;
+    document.getElementById('rpg-hp-text').innerText = `HP: ${Math.floor(heroHp)}/${heroMaxHp}`;
+}
+
+function winBattle() {
+    isFighting = false;
+    coins += currentMonster.reward;
+    heroLevel += 1;
+    heroMaxHp += 20;
+    heroPower += 3;
     updateUI();
-    
-    alert('🔄 Прогресс полностью сброшен!');
-    switchScreen('screen-main');
+    sync();
+
+    const area = document.getElementById('rpg-area');
+    area.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center;">
+            <div style="font-size: 80px; margin-bottom: 20px;">🏆</div>
+            <h2 style="color: var(--accent-green); margin-bottom: 10px;">Победа!</h2>
+            <p>Вы победили ${currentMonster.name}!</p>
+            <div style="font-size: 24px; color: var(--accent-yellow); font-weight: bold; margin: 15px 0;">+${formatMoney(currentMonster.reward)} 🐾</div>
+            <p style="color: #a855f7; font-weight: bold;">Уровень повышен до ${heroLevel}!</p>
+            
+            <button class="btn-play" style="margin-top: 30px; background: var(--accent-green);" onclick="renderMap()">На карту</button>
+        </div>
+    `;
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+}
+
+function loseBattle() {
+    isFighting = false;
+    heroHp = Math.floor(heroMaxHp * 0.3);
+    sync();
+
+    const area = document.getElementById('rpg-area');
+    area.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center;">
+            <div style="font-size: 80px; margin-bottom: 20px;">💀</div>
+            <h2 style="color: var(--accent-red); margin-bottom: 10px;">Поражение</h2>
+            <p>Вы пали в бою...</p>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 10px;">Но вы выжили и восстановили часть сил.</p>
+            
+            <button class="btn-play" style="margin-top: 30px;" onclick="renderMap()">Вернуться на карту</button>
+        </div>
+    `;
+    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 }
 
 loadProgress();
