@@ -3,166 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KisaGame</title>
+    <title>KisaGame RPG</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- ГЛАВНАЯ -->
     <div class="screen active" id="screen-main">
         <div class="header">
-            <div class="logo"><div class="logo-icon">💎</div> GRAM</div>
-            <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
-        </div>
-        <div class="clicker-area">
-            <div class="buff-container">
-                <div id="buff-click-timer" class="buff-timer hidden">🔥 Клик: <span id="buff-click-time">0:00</span></div>
-                <div id="buff-auto-timer" class="buff-timer hidden">🤖 Авто: <span id="buff-auto-time">0:00</span></div>
+            <div class="logo">
+                <div class="logo-icon">🐾</div>
+                <div><div style="font-size:14px; font-weight:800; letter-spacing:1px; line-height:1;">KISA</div><div style="font-size:10px; color:var(--accent-blue); letter-spacing:2px;">RPG</div></div>
             </div>
-            <div class="huge-balance"><span id="balance-main">0</span></div>
-            <div style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px; margin-bottom: 20px;">KISA</div>
-            <button class="click-btn" id="coin-btn">🐱</button>
-            <button class="upgrade-btn" onclick="openShop()" style="justify-content: center; border-color: var(--accent-blue);">
-                <span>🛒 Магазин</span>
-            </button>
+            <div class="header-right">
+                <div class="balance-pill">🐾 <span id="balance-header">0</span></div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="profile-card" style="background: linear-gradient(135deg, #4c1d95, #0B0E14); border: 1px solid #7c3aed;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size: 12px; color: #d8b4fe; margin-bottom: 5px;">УРОВЕНЬ <span id="main-level">1</span></div>
+                        <div class="huge-balance" style="font-size: 28px; font-weight: 800; color: #f3e8ff;">Герой</div>
+                    </div>
+                    <div style="font-size: 40px; filter: drop-shadow(0 0 10px #a855f7);">🧙‍♂️</div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div style="display:flex; justify-content:space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 5px;">
+                        <span>XP</span>
+                        <span><span id="main-xp">0</span> / <span id="main-max-xp">100</span></span>
+                    </div>
+                    <div class="progress-bar" style="height: 8px;"><div class="progress-fill" id="xp-fill" style="width: 0%; background: #a855f7;"></div></div>
+                </div>
+            </div>
+
+            <div class="section-title">Испытания</div>
+            
+            <div class="game-grid-main">
+                <div class="game-card-main full-width" onclick="openRPG()" style="background: linear-gradient(90deg, #4c1d95, #0f172a); border: 1px solid #7c3aed;">
+                    <div class="game-card-icon">⚔️</div>
+                    <div class="game-card-info">
+                        <div class="game-card-title">Карта Подземелья</div>
+                        <div class="game-card-desc">Исследуй локации и сражайся с боссами</div>
+                    </div>
+                    <div class="game-badge purple">RPG</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="screen" id="screen-games">
-        <div class="header"><div class="logo">🎮 Мини-игры</div></div>
-        <div class="game-grid">
-            <div class="game-card" onclick="openGame('cups')"><div class="game-card-icon">🥥</div><div class="game-card-title">Наперстки</div></div>
-            <div class="game-card" onclick="openGame('dice')"><div class="game-card-icon">🎲</div><div class="game-card-title">Кости</div></div>
-            <div class="game-card" onclick="openGame('coin')"><div class="game-card-icon">🪙</div><div class="game-card-title">Монетка</div></div>
-            <div class="game-card" onclick="openGame('slots')"><div class="game-card-icon">🎰</div><div class="game-card-title">Слоты</div></div>
-            <div class="game-card" onclick="openGame('wheel')"><div class="game-card-icon">🎡</div><div class="game-card-title">Колесо</div></div>
-            <div class="game-card" onclick="openGame('guess')"><div class="game-card-icon">🔢</div><div class="game-card-title">Угадай число</div></div>
-        </div>
-    </div>
-
-    <div class="screen" id="screen-game-play">
+    <!-- ЭКРАН RPG -->
+    <div class="screen" id="screen-rpg">
         <div class="header" style="justify-content: flex-start; gap: 15px; background: transparent;">
-            <button class="back-btn" onclick="switchScreen('screen-games')">‹</button>
-            <div class="logo" id="game-header-title">Игра</div>
+            <button class="back-btn" onclick="switchScreen('screen-main')">‹</button>
+            <div class="logo">
+                <div class="logo-icon" style="font-size: 20px; background: #7c3aed;">⚔️</div>
+                <div><div style="font-size:16px; font-weight:700;">Подземелье</div><div style="font-size:10px; color:var(--text-muted);" id="rpg-hp-text">HP: 100/100</div></div>
+            </div>
         </div>
-        <div class="game-play-area">
-            <div id="game-ui" class="game-ui-container"></div>
-            <div id="win-panel" class="win-panel hidden">
-                <div class="win-text">🎉 Победа! <span id="win-multiplier"></span></div>
-                <div class="win-amount">+<span id="win-amount">0</span></div>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <div class="bet-panel">
-                <div class="bet-label">ВАША СТАВКА</div>
-                <input type="number" id="bet-input" class="bet-input" value="10" min="1">
-                <div class="quick-bets">
-                    <button class="quick-bet" onclick="setBet(100)">100</button>
-                    <button class="quick-bet" onclick="setBet(1000)">1 000</button>
-                    <button class="quick-bet" onclick="setBet(5000)">5 000</button>
-                    <button class="quick-bet" onclick="setBet(coins)">Весь баланс</button>
-                </div>
-                <button class="btn-play" id="play-btn" onclick="executeGame()">Крутить</button>
-            </div>
+        
+        <div class="game-play-area" id="rpg-area">
+            <!-- Карта или бой -->
         </div>
     </div>
 
-    <div class="game-modal" id="shop-modal">
-        <div class="modal-content">
-            <div class="close-modal" onclick="closeShop()">✕</div>
-            <h2>🛒 Магазин</h2>
-            <div class="shop-section">
-                <h3>Постоянные улучшения</h3>
-                <div class="shop-item">
-                    <div><div class="shop-title">⚡ Сила клика</div></div>
-                    <button class="btn-shop" id="btn-up-power" onclick="buyUpgrade('power')">Купить</button>
-                </div>
-                <div class="shop-item">
-                    <div><div class="shop-title">🤖 Автоклик</div></div>
-                    <button class="btn-shop" id="btn-up-auto" onclick="buyUpgrade('auto')">Купить</button>
-                </div>
-            </div>
-            <div class="shop-section">
-                <h3>Временные бусты</h3>
-                <div class="shop-item">
-                    <div><div class="shop-title">🔥 x2 К клику</div></div>
-                    <button class="btn-shop" id="btn-buff-click" onclick="buyBuff('click')">Купить</button>
-                </div>
-                <div class="shop-item">
-                    <div><div class="shop-title">🤖 x2 К автоклику</div></div>
-                    <button class="btn-shop" id="btn-buff-auto" onclick="buyBuff('auto')">Купить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="screen" id="screen-bonus">
-        <div class="header"><div class="logo">🎁 Бонус</div></div>
-        <div class="bonus-card">
-            <div class="gift-icon">🎁</div>
-            <h2>Ежедневный подарок</h2>
-            <p style="color: var(--text-muted); margin: 10px 0 30px;">Заходи каждый день и получай 500 Kisa!</p>
-            <button class="btn-primary" id="claim-bonus-btn">Забрать бонус</button>
-            <p id="bonus-timer" style="color: var(--text-muted); font-size: 14px; margin-top: 15px;"></p>
-        </div>
-    </div>
-
-    <div class="screen" id="screen-profile">
-        <div class="header"><div class="logo">👤 Профиль</div></div>
-        <div class="user-card">
-            <img src="" id="user-avatar" class="avatar" alt="Avatar">
-            <div class="user-info">
-                <h3 id="user-name">Игрок</h3>
-                <p>@<span id="user-username">username</span> • ID: <span id="user-id">0</span></p>
-            </div>
-        </div>
-        <div class="stats-grid">
-            <div class="stat-box"><div class="stat-value c-blue" id="stat-balance">0</div><div class="stat-label">Kisa</div></div>
-            <div class="stat-box"><div class="stat-value" id="stat-games">0</div><div class="stat-label">Игр</div></div>
-            <div class="stat-box"><div class="stat-value c-green" id="stat-wins">0</div><div class="stat-label">Побед</div></div>
-            <div class="stat-box"><div class="stat-value c-red" id="stat-losses">0</div><div class="stat-label">Поражений</div></div>
-        </div>
-    </div>
-
-    <div class="screen" id="screen-leaderboard">
-        <div class="header"><div class="logo">🏆 Рейтинг</div></div>
-        <div class="leaderboard-list" id="leaderboard-container"></div>
-    </div>
-
-    <!-- НОВЫЙ ЭКРАН НАСТРОЕК -->
-    <div class="screen" id="screen-settings">
-        <div class="header"><div class="logo">⚙️ Настройки</div></div>
-        <div style="padding: 20px;">
-            <div class="shop-section">
-                <h3>Тема оформления</h3>
-                <div class="theme-buttons">
-                    <button class="btn-theme" onclick="changeTheme('dark')">🌌 Тёмная</button>
-                    <button class="btn-theme" onclick="changeTheme('light')">☀️ Светлая</button>
-                    <button class="btn-theme" onclick="changeTheme('cosmic')">🔮 Космос</button>
-                </div>
-            </div>
-            <div class="shop-section" style="margin-top: 30px;">
-                <h3 style="color: var(--accent-red);">Опасная зона</h3>
-                <button class="btn-primary" style="background: var(--accent-red); color: white; margin-top: 10px;" onclick="resetProgress()">🔄 Сбросить весь прогресс</button>
-            </div>
-            <div style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 50px;">KisaGame v2.0 • Сервер</div>
-        </div>
-    </div>
-
+    <!-- НАВИГАЦИЯ -->
     <nav class="bottom-nav">
         <button class="nav-item active" id="nav-main" onclick="switchScreen('screen-main')"><span class="nav-icon">🏠</span><span>Главная</span></button>
-        <button class="nav-item" id="nav-games" onclick="switchScreen('screen-games')"><span class="nav-icon">🎮</span><span>Игры</span></button>
-        <button class="nav-item" id="nav-bonus" onclick="switchScreen('screen-bonus')"><span class="nav-icon">🎁</span><span>Бонус</span></button>
-        <button class="nav-item" id="nav-profile" onclick="switchScreen('screen-profile')"><span class="nav-icon">👤</span><span>Профиль</span></button>
-        <button class="nav-item" id="nav-leader" onclick="switchScreen('screen-leaderboard')"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
-        <button class="nav-item" id="nav-settings" onclick="switchScreen('screen-settings')"><span class="nav-icon">⚙️</span><span>Настройки</span></button>
+        <button class="nav-item" onclick="openRPG()"><span class="nav-icon">⚔️</span><span>Подземелье</span></button>
+        <button class="nav-item" onclick="alert('В разработке')"><span class="nav-icon">👤</span><span>Профиль</span></button>
+        <button class="nav-item" onclick="alert('В разработке')"><span class="nav-icon">🏆</span><span>Рейтинг</span></button>
     </nav>
 
-    <script>
-        // Применяем тему при загрузке
-        const savedTheme = localStorage.getItem('kisa_theme') || 'dark';
-        if (savedTheme === 'light') document.body.classList.add('theme-light');
-        if (savedTheme === 'cosmic') document.body.classList.add('theme-cosmic');
-    </script>
     <script src="script.js"></script>
 </body>
 </html>
